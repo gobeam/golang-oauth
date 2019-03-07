@@ -1,1 +1,1 @@
-package go_oauth2
+package main
