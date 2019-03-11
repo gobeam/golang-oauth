@@ -3,11 +3,14 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/json-iterator/go"
 	"gopkg.in/gorp.v2"
+	"gopkg.in/oauth2.v3"
+	"gopkg.in/oauth2.v3/models"
 	"io"
+	"os"
 	"time"
 )
-
 
 // Default Model struct
 type Model struct {
@@ -29,28 +32,41 @@ type OauthAccessTokens struct {
 // Oauth Refresh Tokens
 type OauthRefreshTokens struct {
 	Model
-	AccessTokenId    int64  `db:"access_token_id"`
-	Revoked   bool   `db:"revoked"`
-	ExpiredAt int64  `db:"expired_at"`
+	AccessTokenId int64 `db:"access_token_id"`
+	Revoked       bool  `db:"revoked"`
+	ExpiredAt     int64 `db:"expired_at"`
 }
 
 //Oauth Clients
 type OauthClients struct {
 	Model
-	UserId    int64  `db:"user_id"`
-	Name      string `db:"name"`
-	Secret  string  `db:"secret"`
-	Revoked   bool   `db:"revoked"`
-	Redirect   string   `db:"redirect"`
+	UserId   int64  `db:"user_id"`
+	Name     string `db:"name"`
+	Secret   string `db:"secret"`
+	Revoked  bool   `db:"revoked"`
+	Redirect string `db:"redirect"`
 }
-
 
 // Store mysql token store
 type Store struct {
-	tableName string
-	db        *gorp.DbMap
-	stdout    io.Writer
-	ticker    *time.Ticker
+	clientTable  string
+	accessTable  string
+	refreshTable string
+	db           *gorp.DbMap
+	stdout       io.Writer
+	ticker       *time.Ticker
+}
+
+// StoreItem data item
+type StoreItem struct {
+	ID        int64  `db:"id,primarykey,autoincrement"`
+	ExpiredAt int64  `db:"expired_at"`
+	UserId    string   `db:"user_id"`
+	Revoke    bool   `db:"revoke"`
+	Code      string `db:"code,size:255"`
+	Access    string `db:"access,size:255"`
+	Refresh   string `db:"refresh,size:255"`
+	Data      string `db:"data,size:2048"`
 }
 
 
@@ -58,7 +74,7 @@ type Store struct {
 // config mysql configuration,
 // tableName table name (default oauth2_token),
 // GC time interval (in seconds, default 600)
-func NewStore(config *Config) {
+func NewStore(config *Config, gcInterval int) *Store {
 	db, err := sql.Open("mysql", config.DSN)
 	if err != nil {
 		panic(err)
@@ -68,18 +84,32 @@ func NewStore(config *Config) {
 	db.SetMaxIdleConns(config.MaxIdleConns)
 	db.SetConnMaxLifetime(config.MaxLifetime)
 
-	NewStoreWithDB(db)
+	return NewStoreWithDB(db, gcInterval)
 }
 
 
 // NewStoreWithDB create mysql store instance,
 // db sql.DB
-func NewStoreWithDB(db *sql.DB) {
-	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Encoding: "UTF8", Engine: "MyISAM"}}
+func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
+	store := &Store{
+		db:           &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Encoding: "UTF8", Engine: "MyISAM"}},
+		accessTable:  "oauth_access_tokens",
+		clientTable:  "oauth_clients",
+		refreshTable: "oauth_refresh_tokens",
+		stdout:       os.Stderr,
+	}
 
-	dbmap.AddTableWithName(OauthAccessTokens{}, "oauth_access_tokens")
-	dbmap.AddTableWithName(OauthClients{}, "oauth_clients")
-	 dbmap.AddTableWithName(OauthRefreshTokens{}, "oauth_refresh_tokens")
+	store.db.AddTableWithName(OauthAccessTokens{}, store.accessTable)
+	store.db.AddTableWithName(OauthClients{}, store.clientTable)
+	store.db.AddTableWithName(OauthRefreshTokens{}, store.refreshTable)
+
+	interval := 600
+	if gcInterval > 0 {
+		interval = gcInterval
+	}
+	store.ticker = time.NewTicker(time.Second * time.Duration(interval))
+	go store.gc()
+	return store
 }
 
 // NewConfig create mysql configuration instance
@@ -101,10 +131,9 @@ type Config struct {
 }
 
 // NewDefaultStore create mysql store instance
-func NewDefaultStore(config *Config) {
-	 NewStore(config)
+func NewDefaultStore(config *Config) *Store{
+	return NewStore(config, 0)
 }
-
 
 // Close close the store
 func (s *Store) Close() {
@@ -117,7 +146,6 @@ func (s *Store) gc() {
 		s.clean()
 	}
 }
-
 
 func (s *Store) clean() {
 	now := time.Now().Unix()
@@ -136,7 +164,6 @@ func (s *Store) clean() {
 	}
 }
 
-
 func (s *Store) errorf(format string, args ...interface{}) {
 	if s.stdout != nil {
 		buf := fmt.Sprintf("[OAUTH2-MYSQL-ERROR]: "+format, args...)
@@ -144,4 +171,133 @@ func (s *Store) errorf(format string, args ...interface{}) {
 	}
 }
 
+// Create create and store the new token information
+func (s *Store) Create(info oauth2.TokenInfo) error {
+	buf, _ := jsoniter.Marshal(info)
+	item := &StoreItem{
+		Data: string(buf),
+	}
+	item.UserId = info.GetUserID()
+	if code := info.GetCode(); code != "" {
+		item.Code = code
+		item.ExpiredAt = info.GetCodeCreateAt().Add(info.GetCodeExpiresIn()).Unix()
+	} else {
+		item.Access = info.GetAccess()
+		item.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 
+		if refresh := info.GetRefresh(); refresh != "" {
+			item.Refresh = info.GetRefresh()
+			item.ExpiredAt = info.GetRefreshCreateAt().Add(info.GetRefreshExpiresIn()).Unix()
+		}
+	}
+
+	return s.db.Insert(item)
+}
+
+func (s *Store) ClearAccessToken(info oauth2.TokenInfo) error {
+	query := fmt.Sprintf("DELETE FROM %s WHERE user_id=?", s.tableName)
+	_, err := s.db.Exec(query, info.GetUserID())
+	if err != nil && err == sql.ErrNoRows {
+		return nil
+	}
+	return err
+}
+
+func (s *Store) RevokeAccessTokens(id string) error {
+	query := fmt.Sprintf("UPDATE %s SET `revoke`=? WHERE user_id IN (?)", s.tableName)
+	_, err := s.db.Exec(query, 1, id)
+	if err != nil && err == sql.ErrNoRows {
+		return nil
+	}
+	return err
+}
+
+// RemoveByCode delete the authorization code
+func (s *Store) RemoveByCode(id string) error {
+	query := fmt.Sprintf("UPDATE %s SET code='' WHERE code=? LIMIT 1", s.tableName)
+	_, err := s.db.Exec(query, id)
+	if err != nil && err == sql.ErrNoRows {
+		return nil
+	}
+	return err
+}
+
+// RemoveByAccess use the access token to delete the token information
+func (s *Store) RemoveByAccess(access string) error {
+	query := fmt.Sprintf("UPDATE %s SET access='', refresh='' WHERE access=? LIMIT 1", s.tableName)
+	_, err := s.db.Exec(query, access)
+	if err != nil && err == sql.ErrNoRows {
+		return nil
+	}
+	return err
+}
+
+// RemoveByRefresh use the refresh token to delete the token information
+func (s *Store) RemoveByRefresh(refresh string) error {
+	query := fmt.Sprintf("UPDATE %s SET refresh='', access='' WHERE refresh=? LIMIT 1", s.tableName)
+	_, err := s.db.Exec(query, refresh)
+	if err != nil && err == sql.ErrNoRows {
+		return nil
+	}
+	return err
+}
+
+func (s *Store) toTokenInfo(data string) oauth2.TokenInfo {
+	var tm models.Token
+	jsoniter.Unmarshal([]byte(data), &tm)
+	return &tm
+}
+
+// GetByCode use the authorization code for token information data
+func (s *Store) GetByCode(code string) (oauth2.TokenInfo, error) {
+	if code == "" {
+		return nil, nil
+	}
+
+	query := fmt.Sprintf("SELECT * FROM %s WHERE code=? LIMIT 1", s.tableName)
+	var item StoreItem
+	err := s.db.SelectOne(&item, query, code)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return s.toTokenInfo(item.Data), nil
+}
+
+// GetByAccess use the access token for token information data
+func (s *Store) GetByAccess(access string) (oauth2.TokenInfo, error) {
+	if access == "" {
+		return nil, nil
+	}
+
+	query := fmt.Sprintf("SELECT * FROM %s WHERE access=? LIMIT 1", s.tableName)
+	var item StoreItem
+	err := s.db.SelectOne(&item, query, access)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return s.toTokenInfo(item.Data), nil
+}
+
+// GetByRefresh use the refresh token for token information data
+func (s *Store) GetByRefresh(refresh string) (oauth2.TokenInfo, error) {
+	if refresh == "" {
+		return nil, nil
+	}
+
+	query := fmt.Sprintf("SELECT * FROM %s WHERE refresh=? LIMIT 1", s.tableName)
+	var item StoreItem
+	err := s.db.SelectOne(&item, query, refresh)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return s.toTokenInfo(item.Data), nil
+}
