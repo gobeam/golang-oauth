@@ -1,29 +1,44 @@
 package main
 
 import (
-	"github.com/ekbana/golang-oauth/libs/oauth"
+	"github.com/roshanr83/go-oauth2/oauth"
 	"gopkg.in/oauth2.v3/manage"
+	"gopkg.in/oauth2.v3/models"
+	"time"
 )
 
 func main () {
-	//reader := rand.Reader
 	//bitSize := 2048
 	//
-	//key, err := rsa.GenerateKey(reader, bitSize)
-	//checkError(err)
+	//priv, pub := util.GenerateKeyPair(bitSize)
+	////checkError(err)
 	//
-	//publicKey := key.PublicKey
 	//
-	//util.SaveGobKey("private.key", key)
-	//util.SavePEMKey("private.pem", key)
+	//util.SaveGobKey("private.key", priv)
+	//util.SavePEMKey("private.pem", priv)
 	//
-	//util.SaveGobKey("public.key", publicKey)
-	//util.SavePublicPEMKey("public.pem", publicKey)
+	//util.SaveGobKey("public.key", pub)
+	//util.SavePublicPEMKey("public.pem", pub)
 
 	manager := manage.NewDefaultManager()
-	NewDefaultStore(
-		NewConfig("root:root@tcp(127.0.0.1:8889)/goauth?charset=utf8&parseTime=True&loc=Local"),
+	store := oauth.NewDefaultStore(
+		oauth.NewConfig("root:root@tcp(127.0.0.1:8889)/goauth?charset=utf8&parseTime=True&loc=Local"),
 	)
+	defer store.Close()
+
+
+	refreshToken := "asdfasdf"
+	accessToken := &models.Token{
+		ClientID:        "1",
+		UserID:          "1",
+		Scope:           "*",
+		Access:          "Adsdfsdsdf",
+		AccessCreateAt:  time.Now(),
+		AccessExpiresIn: time.Second * 6,
+		Refresh:         refreshToken,
+		RefreshCreateAt: time.Now(),
+	}
+	store.Create(accessToken)
 
 	manager.MapTokenStorage(store)
 }

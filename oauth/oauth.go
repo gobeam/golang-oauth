@@ -1,13 +1,17 @@
-package main
+package oauth
 
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/json-iterator/go"
+	"github.com/roshanr83/go-oauth2/util"
 	"gopkg.in/gorp.v2"
 	"gopkg.in/oauth2.v3"
 	"gopkg.in/oauth2.v3/models"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -15,13 +19,13 @@ import (
 
 // Default Model struct
 type Model struct {
-	ID        int64     `db:"id,primarykey,autoincrement"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"DEFAULT:current_timestamp"`
+	ID        uuid.UUID     `db:"id,primarykey"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 // Oauth Access Token
-type OauthAccessTokens struct {
+type AccessTokens struct {
 	Model
 	UserId    int64  `db:"user_id"`
 	ClientId  int64  `db:"client_id"`
@@ -31,15 +35,14 @@ type OauthAccessTokens struct {
 }
 
 // Oauth Refresh Tokens
-type OauthRefreshTokens struct {
+type RefreshTokens struct {
 	Model
-	AccessTokenId int64 `db:"access_token_id"`
+	AccessTokenId uuid.UUID `db:"access_token_id"`
 	Revoked       bool  `db:"revoked"`
-	ExpiredAt     int64 `db:"expired_at"`
 }
 
 //Oauth Clients
-type OauthClients struct {
+type Clients struct {
 	Model
 	UserId   int64  `db:"user_id"`
 	Name     string `db:"name"`
@@ -83,7 +86,6 @@ func NewStore(config *Config, gcInterval int) *Store {
 	db.SetMaxOpenConns(config.MaxOpenConns)
 	db.SetMaxIdleConns(config.MaxIdleConns)
 	db.SetConnMaxLifetime(config.MaxLifetime)
-
 	return NewStoreWithDB(db, gcInterval)
 }
 
@@ -91,16 +93,22 @@ func NewStore(config *Config, gcInterval int) *Store {
 // db sql.DB
 func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	store := &Store{
-		db:           &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Encoding: "UTF8", Engine: "MyISAM"}},
+		db:           &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Engine: "InnoDB", Encoding: "UTF8"}},
 		accessTable:  "oauth_access_tokens",
 		clientTable:  "oauth_clients",
 		refreshTable: "oauth_refresh_tokens",
 		stdout:       os.Stderr,
 	}
 
-	store.db.AddTableWithName(OauthAccessTokens{}, store.accessTable)
-	store.db.AddTableWithName(OauthClients{}, store.clientTable)
-	store.db.AddTableWithName(OauthRefreshTokens{}, store.refreshTable)
+	store.db.AddTableWithName(AccessTokens{}, store.accessTable)
+	store.db.AddTableWithName(Clients{}, store.clientTable)
+	store.db.AddTableWithName(RefreshTokens{}, store.refreshTable)
+
+	err := store.db.CreateTablesIfNotExists()
+	if err != nil {
+		panic(err)
+	}
+	store.db.CreateIndex()
 
 	interval := 600
 	if gcInterval > 0 {
@@ -172,25 +180,58 @@ func (s *Store) errorf(format string, args ...interface{}) {
 
 // Create create and store the new token information
 func (s *Store) Create(info oauth2.TokenInfo) error {
-	//buf, _ := jsoniter.Marshal(info)
-	item := &OauthAccessTokens{}
+
+	pubKey, err := ioutil.ReadFile("public.pem") // just pass the file name
+	if err != nil {
+		fmt.Print(err)
+	}
+	pkey := util.BytesToPublicKey(pubKey)
+	if err != nil {
+		fmt.Print(err)
+	}
+	msg := []byte("hello man")
+	data := util.EncryptWithPublicKey(msg, pkey)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	fmt.Println(fmt.Sprintf("%s", data))
+
+	oauthAccess := &AccessTokens{}
+	accessId, err := uuid.NewRandom()
+	refreshId, err := uuid.NewRandom()
+	if err != nil {
+		s.errorf(err.Error())
+	}
+	oauthAccess.ID = accessId
 	i, err := strconv.ParseInt(info.GetUserID(), 10, 64)
 	if err != nil {
 
 	}
-	item.UserId = i
+	oauthAccess.UserId = i
 	cid, err := strconv.ParseInt(info.GetClientID(), 10, 64)
 	if err != nil {
 
 	}
-	item.ClientId = cid
-	item.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
-	if refresh := info.GetRefresh(); refresh != "" {
-		item.Refresh = info.GetRefresh()
-		item.ExpiredAt = info.GetRefreshCreateAt().Add(info.GetRefreshExpiresIn()).Unix()
-	}
+	oauthAccess.ClientId = cid
+	oauthAccess.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
+	oauthAccess.CreatedAt = time.Now()
+	oauthAccess.UpdatedAt = time.Now()
 
-	return s.db.Insert(item)
+	refreshToken := &RefreshTokens{}
+
+	if refresh := info.GetRefresh(); refresh != "" {
+		refreshToken.ID = refreshId
+		refreshToken.AccessTokenId = accessId
+		refreshToken.CreatedAt = time.Now()
+		refreshToken.UpdatedAt = time.Now()
+	}
+	err2 := s.db.Insert(oauthAccess)
+	fmt.Println(err2)
+
+	err1 := s.db.Insert(refreshToken)
+	fmt.Println(err1)
+	return nil
 }
 
 func (s *Store) ClearAccessToken(info oauth2.TokenInfo) error {
