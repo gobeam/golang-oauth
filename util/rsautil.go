@@ -3,8 +3,9 @@ package util
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha512"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/gob"
 	"encoding/pem"
 	"fmt"
@@ -125,21 +126,33 @@ func BytesToPrivateKey(priv []byte) *rsa.PrivateKey {
 
 
 // EncryptWithPublicKey encrypts data with public key
-func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) []byte {
-	hash := sha512.New()
-	ciphertext, err := rsa.EncryptOAEP(hash, rand.Reader, pub, msg, nil)
+func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) (string, error) {
+	label := []byte("OAEP Encrypted")
+	// crypto/rand.Reader is a good source of entropy for randomizing the
+	// encryption function.
+	rng := rand.Reader
+	cipherText, err := rsa.EncryptOAEP(sha256.New(), rng, pub, []byte(msg),    label)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "Error from encryption: %s\n", err)
+		return "", err
 	}
-	return ciphertext
+	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
 // DecryptWithPrivateKey decrypts data with private key
-func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) []byte {
-	hash := sha512.New()
-	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
+func DecryptWithPrivateKey(cipherText string, priv *rsa.PrivateKey) (string, error) {
+	ct,_ := base64.StdEncoding.DecodeString(cipherText)
+	label := []byte("OAEP Encrypted")
+
+	// crypto/rand.Reader is a good source of entropy for blinding the RSA
+	// operation.
+	rng := rand.Reader
+	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, priv, ct, label)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "Error from decryption: %s\n", err)
+		return "", err
 	}
-	return plaintext
+	fmt.Printf("Plaintext: %s\n", string(plaintext))
+
+	return string(plaintext), nil
 }

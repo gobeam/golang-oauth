@@ -73,6 +73,8 @@ out/
 
 # Icon must end with two \r
 Icon
+private.pem
+public.pem
 
 # Thumbnails
 ._*
