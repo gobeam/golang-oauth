@@ -196,6 +196,8 @@ func (s *Store) CreateClient(userId int64) (Clients, error) {
 	client.ID = uuid.New()
 	client.Secret = util.RandomKey(20)
 	client.UserId = userId
+	client.CreatedAt = time.Now()
+	client.UpdatedAt = time.Now()
 	err := s.db.Insert(&client)
 	if err != nil {
 		return client, err
