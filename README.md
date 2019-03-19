@@ -1,4 +1,4 @@
-# Golang Oauth2 with jwt [OAuth 2.0](https://github.com/roshanr83/go-oauth2)
+# Golang Oauth2 with jwt [OAuth 2.0](https://godoc.org/github.com/roshanr83/go-oauth2)
 
 
 This project is modified version of [go-oauth2/oauth2](https://github.com/go-oauth2/oauth2). Since that didn't meet my requirement so I modified the code so I can implement oauth2 alongside with JWT.
@@ -6,6 +6,8 @@ This project is modified version of [go-oauth2/oauth2](https://github.com/go-oau
 This package uses <b>EncryptOAEP</b> which encrypts the given data with <b>RSA-OAEP</b> to encrypt token data. Two separate file <b>private.pem</b> and <b>public.pem</b> file will be created on your root folder which includes respective private and public RSA keys which is used for encryption.
 <br>
 This package only handles Resource Owner Password Credentials type.
+<br>
+Official docs: [Here](https://godoc.org/github.com/roshanr83/go-oauth2)
 
 ## Install
 
@@ -88,10 +90,24 @@ func main() {
 
 ```
 
+## Running the tests
+
+``` bash
+$ go test
+```
+
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 Please make sure to update tests as appropriate.
+
+
+## Acknowledgments
+<ol>
+<li> https://github.com/go-oauth2/oauth2 </li>
+<li>https://github.com/go-oauth2/oauth2</li>
+</ol>
+
 
 
 ## MIT License
