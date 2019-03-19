@@ -7,7 +7,7 @@ import (
 type Token struct {
 	ClientID         string        `bson:"ClientID"`
 	ClientSecret         string        `bson:"ClientSecret"`
-	UserID           string        `bson:"UserID"`
+	UserID           int64        `bson:"UserID"`
 	RedirectURI      string        `bson:"RedirectURI"`
 	Scope            string        `bson:"Scope"`
 	AccessCreateAt   time.Time     `bson:"AccessCreateAt"`
@@ -24,8 +24,8 @@ type TokenInfo interface {
 	SetClientID(string)
 	GetClientSecret() string
 	SetClientSecret() string
-	GetUserID() string
-	SetUserID(string)
+	GetUserID() int64
+	SetUserID(int64)
 	GetRedirectURI() string
 	SetRedirectURI(string)
 	GetScope() string
@@ -74,12 +74,12 @@ func (t *Token) SetClientID(clientID string) {
 }
 
 // GetUserID the user id
-func (t *Token) GetUserID() string {
+func (t *Token) GetUserID() int64 {
 	return t.UserID
 }
 
 // SetUserID the user id
-func (t *Token) SetUserID(userID string) {
+func (t *Token) SetUserID(userID int64) {
 	t.UserID = userID
 }
 
