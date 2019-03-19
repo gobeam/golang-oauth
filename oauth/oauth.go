@@ -188,19 +188,19 @@ func (s *Store) errorf(format string, args ...interface{}) {
 }
 
 // create client
-func (s *Store) CreateClient(userId int64) error {
-	if userId == 0 {
-		return errors.New("user id cannot be empty")
-	}
+func (s *Store) CreateClient(userId int64) (Clients, error) {
 	var client Clients
+	if userId == 0 {
+		return client, errors.New("user id cannot be empty")
+	}
 	client.ID = uuid.New()
 	client.Secret = util.RandomKey(20)
 	client.UserId = userId
 	err := s.db.Insert(&client)
 	if err != nil {
-		return err
+		return client, err
 	}
-	return nil
+	return client, nil
 }
 
 
