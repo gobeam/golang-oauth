@@ -1,13 +1,14 @@
 package oauth
 
 import (
+	"github.com/google/uuid"
 	"time"
 )
 
 type Token struct {
-	ClientID         string        `bson:"ClientID"`
-	ClientSecret         string        `bson:"ClientSecret"`
-	UserID           int64        `bson:"UserID"`
+	ClientID         uuid.UUID     `bson:"ClientID"`
+	ClientSecret     string        `bson:"ClientSecret"`
+	UserID           int64         `bson:"UserID"`
 	RedirectURI      string        `bson:"RedirectURI"`
 	Scope            string        `bson:"Scope"`
 	AccessCreateAt   time.Time     `bson:"AccessCreateAt"`
@@ -20,8 +21,8 @@ type Token struct {
 type TokenInfo interface {
 	New() TokenInfo
 
-	GetClientID() string
-	SetClientID(string)
+	GetClientID() uuid.UUID
+	SetClientID(uuid.UUID)
 	GetClientSecret() string
 	SetClientSecret() string
 	GetUserID() int64
@@ -42,7 +43,6 @@ type TokenInfo interface {
 	SetRefreshExpiresIn(time.Duration)
 }
 
-
 // NewToken create to token model instance
 func NewToken() *Token {
 	return &Token{}
@@ -54,22 +54,22 @@ func (t *Token) New() TokenInfo {
 }
 
 // GetClientID the client id
-func (t *Token) GetClientID() string {
+func (t *Token) GetClientID() uuid.UUID {
 	return t.ClientID
 }
 
 // GetClientID the client id
 func (t *Token) GetClientSecret() string {
-	return t.ClientID
+	return t.ClientSecret
 }
 
 // GetClientID the client id
 func (t *Token) SetClientSecret() string {
-	return t.ClientID
+	return t.ClientSecret
 }
 
 // SetClientID the client id
-func (t *Token) SetClientID(clientID string) {
+func (t *Token) SetClientID(clientID uuid.UUID) {
 	t.ClientID = clientID
 }
 
@@ -102,7 +102,6 @@ func (t *Token) GetScope() string {
 func (t *Token) SetScope(scope string) {
 	t.Scope = scope
 }
-
 
 // GetAccessCreateAt create Time
 func (t *Token) GetAccessCreateAt() time.Time {

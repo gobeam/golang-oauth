@@ -14,7 +14,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -45,7 +44,7 @@ type AccessTokens struct {
 // Payload to encrypt of access token
 type AccessTokenPayload struct {
 	UserId    int64 `db:"user_id"`
-	ClientId  int64 `db:"client_id"`
+	ClientId  uuid.UUID `db:"client_id"`
 	ExpiredAt int64 `db:"expired_at"`
 }
 
@@ -255,16 +254,8 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	if err != nil {
 		return tokenResp, err
 	}
-	i, err := strconv.ParseInt(info.GetUserID(), 10, 64)
-	if err != nil {
-		return tokenResp, err
-	}
-	cid, err := strconv.ParseInt(info.GetClientID(), 10, 64)
-	if err != nil {
-		return tokenResp, err
-	}
-	accessTokenPayload.UserId = i
-	accessTokenPayload.ClientId = cid
+	accessTokenPayload.UserId = info.GetUserID()
+	accessTokenPayload.ClientId = info.GetClientID()
 	accessTokenPayload.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 	oauthAccess := &AccessTokens{
 		Model{
