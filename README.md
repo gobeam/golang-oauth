@@ -13,7 +13,7 @@ This package only handles Resource Owner Password Credentials type.
 $ go get -u -v github.com/roshanr83/go-oauth2
 ```
 
-## To create Client
+## Usage
 
 ``` go
 package main
@@ -81,7 +81,7 @@ func main() {
 
 
 	//you can also clear all token related to user by passing TokenInfo from valid token
-	store.ClearByAccessToken(info TokenInfo)
+	store.ClearByAccessToken(userId int64)
 	// ...
 }
 

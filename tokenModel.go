@@ -1,4 +1,4 @@
-package oauth
+package go_oauth2
 
 import (
 	"github.com/google/uuid"

@@ -1,4 +1,4 @@
-package oauth
+package go_oauth2
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/json-iterator/go"
-	"github.com/roshanr83/go-oauth2/util"
 	"gopkg.in/gorp.v2"
 	"io"
 	"io/ioutil"
@@ -19,19 +18,19 @@ import (
 
 // constants
 const (
-	PublicPem    = "public.pem"
-	PrivatePem   = "private.pem"
-	AccessTokenTable  = "oauth_access_tokens"
-	RefreshTokenTable = "oauth_refresh_tokens"
-	ClientTable       = "oauth_clients"
-	BitSize       = 2048
+	PublicPem           = "public.pem"
+	PrivatePem          = "private.pem"
+	AccessTokenTable    = "oauth_access_tokens"
+	RefreshTokenTable   = "oauth_refresh_tokens"
+	ClientTable         = "oauth_clients"
+	BitSize             = 2048
 	RefreshTokenRevoked = "refresh token already been revoked"
-	AccessTokenRevoked = "access token has already been revoked"
-	AccessTokenExpired = "access token has already been expired"
+	AccessTokenRevoked  = "access token has already been revoked"
+	AccessTokenExpired  = "access token has already been expired"
 	InvalidRefreshToken = "invalid refresh token"
-	InvalidAccessToken = "invalid access token"
-	InvalidClient = "invalid client"
-	EmptyUserID = "user id cannot be empty"
+	InvalidAccessToken  = "invalid access token"
+	InvalidClient       = "invalid client"
+	EmptyUserID         = "user id cannot be empty"
 )
 
 // Default Model struct
@@ -51,9 +50,9 @@ type AccessTokens struct {
 
 // Payload to encrypt of access token
 type AccessTokenPayload struct {
-	UserId    int64 `db:"user_id"`
+	UserId    int64     `db:"user_id"`
 	ClientId  uuid.UUID `db:"client_id"`
-	ExpiredAt int64 `db:"expired_at"`
+	ExpiredAt int64     `db:"expired_at"`
 }
 
 // payload to encrypt for refresh token
@@ -104,16 +103,15 @@ func NewStore(config *Config, gcInterval int) *Store {
 	return NewStoreWithDB(db, gcInterval)
 }
 
-
 // NewStoreWithDB create mysql store instance,
 // db sql.DB
 func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	store := &Store{
-		db:     &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Engine: "InnoDB", Encoding: "UTF8"}},
-		accessTable: AccessTokenTable,
-		clientTable: ClientTable,
+		db:           &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Engine: "InnoDB", Encoding: "UTF8"}},
+		accessTable:  AccessTokenTable,
+		clientTable:  ClientTable,
 		refreshTable: RefreshTokenTable,
-		stdout: os.Stderr,
+		stdout:       os.Stderr,
 	}
 
 	store.db.AddTableWithName(AccessTokens{}, store.accessTable)
@@ -135,7 +133,6 @@ func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	return store
 }
 
-
 // NewConfig create mysql configuration instance
 func NewConfig(dsn string) *Config {
 	return &Config{
@@ -146,7 +143,6 @@ func NewConfig(dsn string) *Config {
 	}
 }
 
-
 // Config mysql configuration
 type Config struct {
 	DSN          string
@@ -155,19 +151,16 @@ type Config struct {
 	MaxIdleConns int
 }
 
-
 // Token response after creating both access token and refresh token
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
 
-
 // NewDefaultStore create mysql store instance
 func NewDefaultStore(config *Config) *Store {
 	return NewStore(config, 0)
 }
-
 
 // Close close the store
 func (s *Store) Close() {
@@ -175,13 +168,11 @@ func (s *Store) Close() {
 	s.db.Db.Close()
 }
 
-
 func (s *Store) gc() {
 	for range s.ticker.C {
 		s.clean()
 	}
 }
-
 
 func (s *Store) clean() {
 	now := time.Now().Unix()
@@ -195,14 +186,12 @@ func (s *Store) clean() {
 	}
 }
 
-
 func (s *Store) errorf(format string, args ...interface{}) {
 	if s.stdout != nil {
 		buf := fmt.Sprintf("[OAUTH2-MYSQL-ERROR]: "+format, args...)
 		s.stdout.Write([]byte(buf))
 	}
 }
-
 
 // create client
 func (s *Store) CreateClient(userId int64) (Clients, error) {
@@ -211,7 +200,7 @@ func (s *Store) CreateClient(userId int64) (Clients, error) {
 		return client, errors.New(EmptyUserID)
 	}
 	client.ID = uuid.New()
-	client.Secret = util.RandomKey(20)
+	client.Secret = RandomKey(20)
 	client.UserId = userId
 	client.CreatedAt = time.Now()
 	client.UpdatedAt = time.Now()
@@ -221,8 +210,6 @@ func (s *Store) CreateClient(userId int64) (Clients, error) {
 	}
 	return client, nil
 }
-
-
 
 // Create create and store the new token information
 func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
@@ -237,9 +224,9 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 		privatePemNotExist = true
 	}
 	if publicPemNotExist || privatePemNotExist {
-		priv, pub := util.GenerateKeyPair(BitSize)
-		util.SavePEMKey(PrivatePem, priv)
-		util.SavePublicPEMKey(PublicPem, pub)
+		priv, pub := GenerateKeyPair(BitSize)
+		SavePEMKey(PrivatePem, priv)
+		SavePublicPEMKey(PublicPem, pub)
 	}
 	tokenResp := TokenResponse{}
 	if info.GetUserID() == 0 {
@@ -261,11 +248,11 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	}
 
 	//create rsa pub
-	pubKeyFile, err := ioutil.ReadFile(PublicPem) // just pass the file name
+	pubKeyFile, err := ioutil.ReadFile(PublicPem)
 	if err != nil {
 		return tokenResp, err
 	}
-	pubkey := util.BytesToPublicKey(pubKeyFile)
+	pubkey := BytesToPublicKey(pubKeyFile)
 	if err != nil {
 		return tokenResp, err
 	}
@@ -291,7 +278,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	}
 	accessByte := new(bytes.Buffer)
 	json.NewEncoder(accessByte).Encode(accessTokenPayload)
-	accessToken, err := util.EncryptWithPublicKey(accessByte.Bytes(), pubkey)
+	accessToken, err := EncryptWithPublicKey(accessByte.Bytes(), pubkey)
 	if err != nil {
 		return tokenResp, err
 	}
@@ -313,10 +300,20 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	refreshTokenByte := new(bytes.Buffer)
 	json.NewEncoder(refreshTokenByte).Encode(refreshTokenPayload)
 
-	refToken, err := util.EncryptWithPublicKey(refreshTokenByte.Bytes(), pubkey)
+	refToken, err := EncryptWithPublicKey(refreshTokenByte.Bytes(), pubkey)
 	tokenResp.RefreshToken = refToken
 	if err != nil {
 		return tokenResp, err
+	}
+
+	//revoke all old access tokens
+	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id = ?", s.accessTable)
+	_, updateErr := s.db.Exec(updateQuery, 1, info.GetUserID())
+	if updateErr != nil {
+		if err == sql.ErrNoRows {
+			return tokenResp, err
+		}
+		return tokenResp, updateErr
 	}
 
 	accessErr := s.db.Insert(oauthAccess)
@@ -327,15 +324,6 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	refErr := s.db.Insert(refreshToken)
 	if accessErr != nil {
 		return tokenResp, refErr
-	}
-	//revoke all old access tokens
-	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id = ?", s.accessTable)
-	_, updateErr := s.db.Exec(updateQuery, 1, info.GetUserID())
-	if updateErr != nil {
-		if err == sql.ErrNoRows {
-			return tokenResp, err
-		}
-		return tokenResp, updateErr
 	}
 	return tokenResp, nil
 }
@@ -408,14 +396,41 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		}
 		return nil, updateErr
 	}
+
+	// revoke associated access token after use
+	updateAccessTokenQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE id=?", s.accessTable)
+	_, updateAccessErr := s.db.Exec(updateAccessTokenQuery, 1, accessToken.AccessTokenId)
+	if updateAccessErr != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
+		return nil, updateAccessErr
+	}
+
 	return &refreshToken, nil
 }
 
-
 // Clear all token related to user
-func (s *Store) ClearByAccessToken(info TokenInfo) error {
+func (s *Store) ClearByAccessToken(userId int64) error {
+	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? ", s.accessTable)
+	var accessTokenData []AccessTokens
+	_, err := s.db.Select(&accessTokenData, checkAccessTokenquery, userId)
+	if err != nil {
+		return err
+	}
+
+	//delete all related refreshtoken
+	for _, value := range accessTokenData {
+		query := fmt.Sprintf("DELETE FROM %s WHERE access_token_id=?", s.refreshTable)
+		_, err := s.db.Exec(query, value.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	//delete all access token related to user
 	query := fmt.Sprintf("DELETE FROM %s WHERE user_id=?", s.accessTable)
-	_, err := s.db.Exec(query, info.GetUserID())
+	_, err = s.db.Exec(query, userId)
 	if err != nil && err == sql.ErrNoRows {
 		return nil
 	}
@@ -424,7 +439,7 @@ func (s *Store) ClearByAccessToken(info TokenInfo) error {
 
 // revoke from RefreshToken
 func (s *Store) RevokeRefreshToken(accessTokenId string) error {
-	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE accessTokenId IN (?)", s.refreshTable)
+	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE access_token_id IN (?)", s.refreshTable)
 	_, err := s.db.Exec(query, 1, accessTokenId)
 	if err != nil && err == sql.ErrNoRows {
 		return nil
@@ -449,11 +464,11 @@ func decryptAccessToken(token string) (*AccessTokenPayload, error) {
 	if err != nil {
 		return &tm, err
 	}
-	prikey := util.BytesToPrivateKey(privKey)
+	prikey := BytesToPrivateKey(privKey)
 	if err != nil {
 		return &tm, err
 	}
-	dec, err := util.DecryptWithPrivateKey(token, prikey)
+	dec, err := DecryptWithPrivateKey(token, prikey)
 	jsoniter.Unmarshal([]byte(dec), &tm)
 	if tm.UserId == 0 {
 		return &tm, errors.New(InvalidAccessToken)
@@ -468,11 +483,11 @@ func decryptRefreshToken(token string) (*RefreshTokenPayload, error) {
 	if err != nil {
 		return &tm, err
 	}
-	prikey := util.BytesToPrivateKey(privKey)
+	prikey := BytesToPrivateKey(privKey)
 	if err != nil {
 		return &tm, err
 	}
-	dec, err := util.DecryptWithPrivateKey(token, prikey)
+	dec, err := DecryptWithPrivateKey(token, prikey)
 	jsoniter.Unmarshal([]byte(dec), &tm)
 	if tm.AccessTokenId == uuid.Nil {
 		return &tm, errors.New(InvalidRefreshToken)
