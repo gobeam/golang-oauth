@@ -354,7 +354,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		return nil, errors.New("refresh token already revoked")
 	}
 
-	updateQuery := fmt.Sprintf("UPDATE %s SET `revoke`=? WHERE access_token_id IN (?)", s.refreshTable)
+	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE access_token_id IN (?)", s.refreshTable)
 	_, updateErr := s.db.Exec(updateQuery, 1, accessToken.AccessTokenId)
 	if updateErr != nil {
 		if err == sql.ErrNoRows {
@@ -378,7 +378,7 @@ func (s *Store) ClearByAccessToken(info TokenInfo) error {
 
 // revoke from RefreshToken
 func (s *Store) RevokeRefreshToken(accessTokenId string) error {
-	query := fmt.Sprintf("UPDATE %s SET `revoke`=? WHERE accessTokenId IN (?)", s.refreshTable)
+	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE accessTokenId IN (?)", s.refreshTable)
 	_, err := s.db.Exec(query, 1, accessTokenId)
 	if err != nil && err == sql.ErrNoRows {
 		return nil
@@ -388,7 +388,7 @@ func (s *Store) RevokeRefreshToken(accessTokenId string) error {
 
 // revoke from accessToken
 func (s *Store) RevokeByAccessTokens(userId string) error {
-	query := fmt.Sprintf("UPDATE %s SET `revoke`=? WHERE user_id IN (?)", s.accessTable)
+	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id IN (?)", s.accessTable)
 	_, err := s.db.Exec(query, 1, userId)
 	if err != nil && err == sql.ErrNoRows {
 		return nil
