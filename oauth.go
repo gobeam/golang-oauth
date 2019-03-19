@@ -189,6 +189,9 @@ func (s *Store) errorf(format string, args ...interface{}) {
 
 // create client
 func (s *Store) CreateClient(userId int64) error {
+	if userId == 0 {
+		return errors.New("user id cannot be empty")
+	}
 	var client Clients
 	client.ID = uuid.New()
 	client.Secret = util.RandomKey(20)
