@@ -1,4 +1,4 @@
-package oauth
+package main
 
 import (
 	"bytes"
@@ -145,6 +145,7 @@ type Config struct {
 	MaxIdleConns int
 }
 
+// Token response after creating both access token and refresh token
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -186,6 +187,21 @@ func (s *Store) errorf(format string, args ...interface{}) {
 	}
 }
 
+// create client
+func (s *Store) CreateClient(userId int64) error {
+	var client Clients
+	client.ID = uuid.New()
+	client.Secret = util.RandomKey(20)
+	client.UserId = userId
+	err := s.db.Insert(&client)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+
+
 // Create create and store the new token information
 func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 
@@ -203,8 +219,22 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 		util.SavePEMKey(PrivatePem, priv)
 		util.SavePublicPEMKey(PublicPem, pub)
 	}
-
 	tokenResp := TokenResponse{}
+
+	//check if valid client
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id=? AND secret=? LIMIT 1", s.clientTable)
+	var client Clients
+	dbErr := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
+	if dbErr != nil {
+		if sql.ErrNoRows != nil {
+			return tokenResp, errors.New("invalid client")
+		}
+		return tokenResp, dbErr
+	}
+	if client.ID == uuid.Nil {
+		return tokenResp, errors.New("invalid client")
+	}
+
 	pubKeyFile, err := ioutil.ReadFile(PublicPem) // just pass the file name
 	if err != nil {
 		return tokenResp, err

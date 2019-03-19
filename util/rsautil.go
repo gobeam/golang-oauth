@@ -10,11 +10,12 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log"
+	rand2 "math/rand"
 	"os"
 )
 
 const (
-	PublicKey = "PUBLIC KEY"
+	PublicKey  = "PUBLIC KEY"
 	PrivateKey = "PRIVATE KEY"
 )
 
@@ -26,8 +27,6 @@ func GenerateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey) {
 	}
 	return privkey, &privkey.PublicKey
 }
-
-
 
 func SaveGobKey(fileName string, key interface{}) {
 	outFile, err := os.Create(fileName)
@@ -70,14 +69,12 @@ func SavePublicPEMKey(fileName string, pubkey *rsa.PublicKey) {
 	checkError(err)
 }
 
-
 func checkError(err error) {
 	if err != nil {
 		fmt.Println("Fatal error ", err.Error())
 		os.Exit(1)
 	}
 }
-
 
 // BytesToPublicKey bytes to public key
 func BytesToPublicKey(pub []byte) *rsa.PublicKey {
@@ -123,15 +120,13 @@ func BytesToPrivateKey(priv []byte) *rsa.PrivateKey {
 	return key
 }
 
-
-
 // EncryptWithPublicKey encrypts data with public key
 func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) (string, error) {
 	label := []byte("OAEP Encrypted")
 	// crypto/rand.Reader is a good source of entropy for randomizing the
 	// encryption function.
 	rng := rand.Reader
-	cipherText, err := rsa.EncryptOAEP(sha256.New(), rng, pub, []byte(msg),    label)
+	cipherText, err := rsa.EncryptOAEP(sha256.New(), rng, pub, []byte(msg), label)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error from encryption: %s\n", err)
 		return "", err
@@ -141,7 +136,7 @@ func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) (string, error) {
 
 // DecryptWithPrivateKey decrypts data with private key
 func DecryptWithPrivateKey(cipherText string, priv *rsa.PrivateKey) (string, error) {
-	ct,_ := base64.StdEncoding.DecodeString(cipherText)
+	ct, _ := base64.StdEncoding.DecodeString(cipherText)
 	label := []byte("OAEP Encrypted")
 
 	// crypto/rand.Reader is a good source of entropy for blinding the RSA
@@ -155,4 +150,22 @@ func DecryptWithPrivateKey(cipherText string, priv *rsa.PrivateKey) (string, err
 	fmt.Printf("Plaintext: %s\n", string(plaintext))
 
 	return string(plaintext), nil
+}
+
+
+// getnerate random key
+var RandomKeyCharacters = []byte("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandomKey(length int) string {
+	bytes := make([]byte, length)
+	for i := 0; i < length; i++ {
+		randInt := randInt(0, len(RandomKeyCharacters))
+		bytes[i] = RandomKeyCharacters[randInt:randInt+1][0]
+	}
+	return string(bytes)
+}
+
+// randInt generates a random integer between min and max.
+func randInt(min int, max int) int {
+	return min + rand2.Intn(max-min)
 }

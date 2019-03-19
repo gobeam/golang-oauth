@@ -1,4 +1,4 @@
-package oauth
+package main
 
 import (
 	"time"
@@ -6,6 +6,7 @@ import (
 
 type Token struct {
 	ClientID         string        `bson:"ClientID"`
+	ClientSecret         string        `bson:"ClientSecret"`
 	UserID           string        `bson:"UserID"`
 	RedirectURI      string        `bson:"RedirectURI"`
 	Scope            string        `bson:"Scope"`
@@ -15,20 +16,14 @@ type Token struct {
 	RefreshExpiresIn time.Duration `bson:"RefreshExpiresIn"`
 }
 
-// ClientInfo the client information model interface
-type ClientInfo interface {
-	GetID() string
-	GetSecret() string
-	GetDomain() string
-	GetUserID() string
-}
-
 // TokenInfo the token information model interface
 type TokenInfo interface {
 	New() TokenInfo
 
 	GetClientID() string
 	SetClientID(string)
+	GetClientSecret() string
+	SetClientSecret() string
 	GetUserID() string
 	SetUserID(string)
 	GetRedirectURI() string
@@ -60,6 +55,16 @@ func (t *Token) New() TokenInfo {
 
 // GetClientID the client id
 func (t *Token) GetClientID() string {
+	return t.ClientID
+}
+
+// GetClientID the client id
+func (t *Token) GetClientSecret() string {
+	return t.ClientID
+}
+
+// GetClientID the client id
+func (t *Token) SetClientSecret() string {
 	return t.ClientID
 }
 
