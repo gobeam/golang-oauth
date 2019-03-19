@@ -17,6 +17,7 @@ import (
 	"time"
 )
 
+// constants
 const (
 	PublicPem    = "public.pem"
 	PrivatePem   = "private.pem"
@@ -24,6 +25,13 @@ const (
 	RefreshTokenTable = "oauth_refresh_tokens"
 	ClientTable       = "oauth_clients"
 	BitSize       = 2048
+	RefreshTokenRevoked = "refresh token already been revoked"
+	AccessTokenRevoked = "access token has already been revoked"
+	AccessTokenExpired = "access token has already been expired"
+	InvalidRefreshToken = "invalid refresh token"
+	InvalidAccessToken = "invalid access token"
+	InvalidClient = "invalid client"
+	EmptyUserID = "user id cannot be empty"
 )
 
 // Default Model struct
@@ -96,6 +104,7 @@ func NewStore(config *Config, gcInterval int) *Store {
 	return NewStoreWithDB(db, gcInterval)
 }
 
+
 // NewStoreWithDB create mysql store instance,
 // db sql.DB
 func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
@@ -126,6 +135,7 @@ func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	return store
 }
 
+
 // NewConfig create mysql configuration instance
 func NewConfig(dsn string) *Config {
 	return &Config{
@@ -136,6 +146,7 @@ func NewConfig(dsn string) *Config {
 	}
 }
 
+
 // Config mysql configuration
 type Config struct {
 	DSN          string
@@ -144,16 +155,19 @@ type Config struct {
 	MaxIdleConns int
 }
 
+
 // Token response after creating both access token and refresh token
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
 
+
 // NewDefaultStore create mysql store instance
 func NewDefaultStore(config *Config) *Store {
 	return NewStore(config, 0)
 }
+
 
 // Close close the store
 func (s *Store) Close() {
@@ -161,11 +175,13 @@ func (s *Store) Close() {
 	s.db.Db.Close()
 }
 
+
 func (s *Store) gc() {
 	for range s.ticker.C {
 		s.clean()
 	}
 }
+
 
 func (s *Store) clean() {
 	now := time.Now().Unix()
@@ -179,6 +195,7 @@ func (s *Store) clean() {
 	}
 }
 
+
 func (s *Store) errorf(format string, args ...interface{}) {
 	if s.stdout != nil {
 		buf := fmt.Sprintf("[OAUTH2-MYSQL-ERROR]: "+format, args...)
@@ -186,11 +203,12 @@ func (s *Store) errorf(format string, args ...interface{}) {
 	}
 }
 
+
 // create client
 func (s *Store) CreateClient(userId int64) (Clients, error) {
 	var client Clients
 	if userId == 0 {
-		return client, errors.New("user id cannot be empty")
+		return client, errors.New(EmptyUserID)
 	}
 	client.ID = uuid.New()
 	client.Secret = util.RandomKey(20)
@@ -224,6 +242,9 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 		util.SavePublicPEMKey(PublicPem, pub)
 	}
 	tokenResp := TokenResponse{}
+	if info.GetUserID() == 0 {
+		return tokenResp, errors.New(EmptyUserID)
+	}
 
 	//check if valid client
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=? AND secret=? LIMIT 1", s.clientTable)
@@ -231,14 +252,15 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	dbErr := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
 	if dbErr != nil {
 		if sql.ErrNoRows != nil {
-			return tokenResp, errors.New("invalid client")
+			return tokenResp, errors.New(InvalidClient)
 		}
 		return tokenResp, dbErr
 	}
 	if client.ID == uuid.Nil {
-		return tokenResp, errors.New("invalid client")
+		return tokenResp, errors.New(InvalidClient)
 	}
 
+	//create rsa pub
 	pubKeyFile, err := ioutil.ReadFile(PublicPem) // just pass the file name
 	if err != nil {
 		return tokenResp, err
@@ -306,6 +328,15 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	if accessErr != nil {
 		return tokenResp, refErr
 	}
+	//revoke all old access tokens
+	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id = ?", s.accessTable)
+	_, updateErr := s.db.Exec(updateQuery, 1, info.GetUserID())
+	if updateErr != nil {
+		if err == sql.ErrNoRows {
+			return tokenResp, err
+		}
+		return tokenResp, updateErr
+	}
 	return tokenResp, nil
 }
 
@@ -317,7 +348,7 @@ func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 	}
 	currentTime := time.Now().Unix()
 	if accessToken.ExpiredAt < currentTime {
-		return nil, errors.New("access token has expired")
+		return nil, errors.New(AccessTokenExpired)
 	}
 
 	query := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? AND expired_at=? LIMIT 1", s.accessTable)
@@ -330,7 +361,7 @@ func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 		return nil, dbErr
 	}
 	if item.Revoked == true {
-		return nil, errors.New("access token already revoked")
+		return nil, errors.New(AccessTokenRevoked)
 	}
 	return &item, nil
 }
@@ -342,18 +373,33 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		return nil, err
 	}
 	query := fmt.Sprintf("SELECT * FROM %s WHERE access_token_id=? LIMIT 1", s.refreshTable)
-	var item RefreshTokens
-	dbErr := s.db.SelectOne(&item, query, accessToken.AccessTokenId)
+	var refreshToken RefreshTokens
+	dbErr := s.db.SelectOne(&refreshToken, query, accessToken.AccessTokenId)
 	if dbErr != nil {
 		if err == sql.ErrNoRows {
 			return nil, err
 		}
 		return nil, dbErr
 	}
-	if item.Revoked == true {
-		return nil, errors.New("refresh token already revoked")
+	if refreshToken.Revoked == true {
+		return nil, errors.New(RefreshTokenRevoked)
 	}
 
+	//check if associated access token is revoked or not
+	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE id=? LIMIT 1", s.accessTable)
+	var accessTokenData AccessTokens
+	findErr := s.db.SelectOne(&accessTokenData, checkAccessTokenquery, accessToken.AccessTokenId)
+	if findErr != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New(InvalidRefreshToken)
+		}
+		return nil, dbErr
+	}
+	if accessTokenData.Revoked == true {
+		return nil, errors.New(InvalidRefreshToken)
+	}
+
+	// revoke refresh token after one time use
 	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE access_token_id IN (?)", s.refreshTable)
 	_, updateErr := s.db.Exec(updateQuery, 1, accessToken.AccessTokenId)
 	if updateErr != nil {
@@ -362,7 +408,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		}
 		return nil, updateErr
 	}
-	return &item, nil
+	return &refreshToken, nil
 }
 
 
@@ -387,7 +433,7 @@ func (s *Store) RevokeRefreshToken(accessTokenId string) error {
 }
 
 // revoke from accessToken
-func (s *Store) RevokeByAccessTokens(userId string) error {
+func (s *Store) RevokeByAccessTokens(userId int64) error {
 	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id IN (?)", s.accessTable)
 	_, err := s.db.Exec(query, 1, userId)
 	if err != nil && err == sql.ErrNoRows {
@@ -410,7 +456,7 @@ func decryptAccessToken(token string) (*AccessTokenPayload, error) {
 	dec, err := util.DecryptWithPrivateKey(token, prikey)
 	jsoniter.Unmarshal([]byte(dec), &tm)
 	if tm.UserId == 0 {
-		return &tm, errors.New("invalid access token")
+		return &tm, errors.New(InvalidAccessToken)
 	}
 	return &tm, nil
 }
@@ -429,7 +475,7 @@ func decryptRefreshToken(token string) (*RefreshTokenPayload, error) {
 	dec, err := util.DecryptWithPrivateKey(token, prikey)
 	jsoniter.Unmarshal([]byte(dec), &tm)
 	if tm.AccessTokenId == uuid.Nil {
-		return &tm, errors.New("invalid refresh token")
+		return &tm, errors.New(InvalidRefreshToken)
 	}
 	return &tm, nil
 }

@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/gob"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -19,6 +18,23 @@ const (
 	PrivateKey = "PRIVATE KEY"
 )
 
+// getnerate random key
+var RandomKeyCharacters = []byte("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandomKey(length int) string {
+	bytes := make([]byte, length)
+	for i := 0; i < length; i++ {
+		randInt := randInt(0, len(RandomKeyCharacters))
+		bytes[i] = RandomKeyCharacters[randInt:randInt+1][0]
+	}
+	return string(bytes)
+}
+
+// randInt generates a random integer between min and max.
+func randInt(min int, max int) int {
+	return min + rand2.Intn(max-min)
+}
+
 // GenerateKeyPair generates a new key pair
 func GenerateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey) {
 	privkey, err := rsa.GenerateKey(rand.Reader, bits)
@@ -26,16 +42,6 @@ func GenerateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey) {
 		log.Fatal(err)
 	}
 	return privkey, &privkey.PublicKey
-}
-
-func SaveGobKey(fileName string, key interface{}) {
-	outFile, err := os.Create(fileName)
-	checkError(err)
-	defer outFile.Close()
-
-	encoder := gob.NewEncoder(outFile)
-	err = encoder.Encode(key)
-	checkError(err)
 }
 
 func SavePEMKey(fileName string, key *rsa.PrivateKey) {
@@ -150,22 +156,4 @@ func DecryptWithPrivateKey(cipherText string, priv *rsa.PrivateKey) (string, err
 	fmt.Printf("Plaintext: %s\n", string(plaintext))
 
 	return string(plaintext), nil
-}
-
-
-// getnerate random key
-var RandomKeyCharacters = []byte("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func RandomKey(length int) string {
-	bytes := make([]byte, length)
-	for i := 0; i < length; i++ {
-		randInt := randInt(0, len(RandomKeyCharacters))
-		bytes[i] = RandomKeyCharacters[randInt:randInt+1][0]
-	}
-	return string(bytes)
-}
-
-// randInt generates a random integer between min and max.
-func randInt(min int, max int) int {
-	return min + rand2.Intn(max-min)
 }

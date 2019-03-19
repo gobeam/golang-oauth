@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Token struct which hold token details
 type Token struct {
 	ClientID         uuid.UUID     `bson:"ClientID"`
 	ClientSecret     string        `bson:"ClientSecret"`
