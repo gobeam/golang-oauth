@@ -14,9 +14,12 @@ var refreshTokenString string
 var accessId uuid.UUID
 var userID int64 = 1
 
+const (
+	dbConfig = "root:root@tcp(127.0.0.1:3306)/goauth?charset=utf8&parseTime=True&loc=Local"
+)
 func init() {
 	store := NewDefaultStore(
-		NewConfig("root:root@tcp(127.0.0.1:8889)/goauth?charset=utf8&parseTime=True&loc=Local"),
+		NewConfig(dbConfig),
 	)
 	dbStore = store
 	//defer store.Close()

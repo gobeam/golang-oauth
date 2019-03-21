@@ -91,6 +91,7 @@ func main() {
 ```
 
 ## Running the tests
+Database config is used as "root:root@tcp(127.0.0.1:3306)/goauth?charset=utf8&parseTime=True&loc=Local" in oauth_test.go file, You may have to change that configuration according to your system config for successful test.
 
 ``` bash
 $ go test
