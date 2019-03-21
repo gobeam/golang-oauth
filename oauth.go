@@ -132,21 +132,16 @@ func (s *Store) CreateClient(userId int64) (Clients, error) {
 
 // Create create and store the new token information
 func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
+	_, publicPemNotExistserr := os.Stat(PublicPem)
+	_, privatePemNotExistserr := os.Stat(PublicPem)
 
-	var publicPemNotExist bool
-	var privatePemNotExist bool
 	// check if Public and Private key exists File is present
-	if _, err := os.Stat(PublicPem); os.IsNotExist(err) {
-		publicPemNotExist = true
-	}
-	if _, err := os.Stat(PrivatePem); os.IsNotExist(err) {
-		privatePemNotExist = true
-	}
-	if publicPemNotExist || privatePemNotExist {
+	if  os.IsNotExist(publicPemNotExistserr) || os.IsNotExist(privatePemNotExistserr) {
 		priv, pub := GenerateKeyPair(BitSize)
 		SavePEMKey(PrivatePem, priv)
 		SavePublicPEMKey(PublicPem, pub)
 	}
+
 	tokenResp := TokenResponse{}
 	if info.GetUserID() == 0 {
 		return tokenResp, errors.New(EmptyUserID)
@@ -157,9 +152,6 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	var client Clients
 	dbErr := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
 	if dbErr != nil {
-		if sql.ErrNoRows != nil {
-			return tokenResp, errors.New(InvalidClient)
-		}
 		return tokenResp, dbErr
 	}
 	if client.ID == uuid.Nil {
@@ -229,9 +221,6 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id = ?", s.accessTable)
 	_, updateErr := s.db.Exec(updateQuery, 1, info.GetUserID())
 	if updateErr != nil {
-		if err == sql.ErrNoRows {
-			return tokenResp, err
-		}
 		return tokenResp, updateErr
 	}
 
@@ -264,7 +253,7 @@ func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 	dbErr := s.db.SelectOne(&item, query, accessToken.UserId, accessToken.ExpiredAt)
 	if dbErr != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, errors.New(InvalidAccessToken)
 		}
 		return nil, dbErr
 	}
@@ -286,7 +275,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 	dbErr := s.db.SelectOne(&refreshToken, query, accessToken.AccessTokenId)
 	if dbErr != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, errors.New(InvalidRefreshToken)
 		}
 		return nil, dbErr
 	}
@@ -312,9 +301,6 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE access_token_id IN (?)", s.refreshTable)
 	_, updateErr := s.db.Exec(updateQuery, 1, accessToken.AccessTokenId)
 	if updateErr != nil {
-		if err == sql.ErrNoRows {
-			return nil, err
-		}
 		return nil, updateErr
 	}
 
@@ -322,9 +308,6 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 	updateAccessTokenQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE id=?", s.accessTable)
 	_, updateAccessErr := s.db.Exec(updateAccessTokenQuery, 1, accessToken.AccessTokenId)
 	if updateAccessErr != nil {
-		if err == sql.ErrNoRows {
-			return nil, err
-		}
 		return nil, updateAccessErr
 	}
 
