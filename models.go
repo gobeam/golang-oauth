@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-// Default Model
+// Model is default model
 type Model struct {
 	ID        uuid.UUID `db:"id,primarykey"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-// Oauth Access Token model
+// AccessTokens is model for Oauth Access Token
 type AccessTokens struct {
 	Model
 	AccessTokenPayload
@@ -22,26 +22,26 @@ type AccessTokens struct {
 	Revoked bool   `db:"revoked"`
 }
 
-// Access Token model
+// AccessTokenPayload is data that will be encrypted by RSA encryption
 type AccessTokenPayload struct {
 	UserId    int64     `db:"user_id"`
 	ClientId  uuid.UUID `db:"client_id"`
 	ExpiredAt int64     `db:"expired_at"`
 }
 
-// Refresh token Model
+// RefreshTokenPayload is model for oauth refresh token
 type RefreshTokenPayload struct {
 	AccessTokenId uuid.UUID `db:"access_token_id"`
 }
 
-// Oauth Refresh Tokens model
+// RefreshTokens is model for oauth refresh token
 type RefreshTokens struct {
 	Model
 	RefreshTokenPayload
 	Revoked bool `db:"revoked"`
 }
 
-//Oauth Clients model
+// Clients is model for oauth clients
 type Clients struct {
 	Model
 	UserId   int64  `db:"user_id"`
@@ -69,7 +69,7 @@ type Config struct {
 	MaxIdleConns int
 }
 
-// Token response model after creating access token and refresh token
+// TokenResponse model after creating access token and refresh token
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`

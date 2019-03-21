@@ -90,7 +90,7 @@ func (s *Store) gc() {
 	}
 }
 
-// Method to clean expired and revoked access token and refresh token during creation of mysql store instance
+// clean is method to clean expired and revoked access token and refresh token during creation of mysql store instance
 func (s *Store) clean() {
 	now := time.Now().Unix()
 	_, accessErr := s.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE expired_at<=? OR (revoked='1')", s.accessTable), now)
@@ -103,7 +103,7 @@ func (s *Store) clean() {
 	}
 }
 
-// Log error
+// errorf logs error
 func (s *Store) errorf(format string, args ...interface{}) {
 	if s.stdout != nil {
 		buf := fmt.Sprintf("[OAUTH2-MYSQL-ERROR]: "+format, args...)
@@ -111,7 +111,7 @@ func (s *Store) errorf(format string, args ...interface{}) {
 	}
 }
 
-// create client,
+// CreateClient creates new client,
 // userId user's id who created the client
 func (s *Store) CreateClient(userId int64) (Clients, error) {
 	var client Clients
@@ -314,7 +314,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 	return &refreshToken, nil
 }
 
-// Clear all token related to user,
+// ClearByAccessToken clears all token related to user,
 // userId id of user whose access token needs to be cleared
 func (s *Store) ClearByAccessToken(userId int64) error {
 	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? ", s.accessTable)
@@ -342,7 +342,7 @@ func (s *Store) ClearByAccessToken(userId int64) error {
 	return err
 }
 
-// revoke from RefreshToken,
+// RevokeRefreshToken revokes token from RefreshToken,
 func (s *Store) RevokeRefreshToken(accessTokenId string) error {
 	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE access_token_id IN (?)", s.refreshTable)
 	_, err := s.db.Exec(query, 1, accessTokenId)
@@ -352,7 +352,7 @@ func (s *Store) RevokeRefreshToken(accessTokenId string) error {
 	return err
 }
 
-// revoke from accessToken
+// RevokeByAccessTokens revokes token from accessToken
 func (s *Store) RevokeByAccessTokens(userId int64) error {
 	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id IN (?)", s.accessTable)
 	_, err := s.db.Exec(query, 1, userId)
@@ -362,7 +362,7 @@ func (s *Store) RevokeByAccessTokens(userId int64) error {
 	return err
 }
 
-//Decrypt Access Token
+// decryptAccessToken decrypts given access token
 func decryptAccessToken(token string) (*AccessTokenPayload, error) {
 	var tm AccessTokenPayload
 	privKey, err := ioutil.ReadFile(PrivatePem)
@@ -381,7 +381,7 @@ func decryptAccessToken(token string) (*AccessTokenPayload, error) {
 	return &tm, nil
 }
 
-// Decrypt Refresh Token
+// decryptRefreshToken decrypts given refresh token
 func decryptRefreshToken(token string) (*RefreshTokenPayload, error) {
 	var tm RefreshTokenPayload
 	privKey, err := ioutil.ReadFile(PrivatePem)

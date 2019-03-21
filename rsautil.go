@@ -13,10 +13,10 @@ import (
 	"os"
 )
 
-// random key characters to choose from
+// RandomKeyCharacters is random key characters to choose from
 var RandomKeyCharacters = []byte("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-// Generate random characters from RandomKeyCharacters
+// RandomKey generates random characters from RandomKeyCharacters
 func RandomKey(length int) string {
 	bytes := make([]byte, length)
 	for i := 0; i < length; i++ {
@@ -40,7 +40,7 @@ func GenerateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey) {
 	return privkey, &privkey.PublicKey
 }
 
-// Save generated *rsa.PrivateKey to file
+// SavePEMKey saves generated *rsa.PrivateKey to file
 func SavePEMKey(fileName string, key *rsa.PrivateKey) {
 	outFile, err := os.Create(fileName)
 	checkError(err)
@@ -55,7 +55,7 @@ func SavePEMKey(fileName string, key *rsa.PrivateKey) {
 	checkError(err)
 }
 
-// Save generated *rsa.PublicKey to file
+// SavePublicPEMKey saves generated *rsa.PublicKey to file
 func SavePublicPEMKey(fileName string, pubkey *rsa.PublicKey) {
 	pubASN1, err := x509.MarshalPKIXPublicKey(pubkey)
 	checkError(err)
@@ -73,7 +73,7 @@ func SavePublicPEMKey(fileName string, pubkey *rsa.PublicKey) {
 	checkError(err)
 }
 
-// check error
+// checkError checks for error
 func checkError(err error) {
 	if err != nil {
 		fmt.Println("Fatal error ", err.Error())
@@ -105,7 +105,7 @@ func BytesToPublicKey(pub []byte) *rsa.PublicKey {
 	return key
 }
 
-// BytesToPublicKey converts given bytes to *rsa.PrivateKey
+// BytesToPrivateKey converts given bytes to *rsa.PrivateKey
 func BytesToPrivateKey(priv []byte) *rsa.PrivateKey {
 	block, _ := pem.Decode(priv)
 	enc := x509.IsEncryptedPEMBlock(block)
@@ -137,7 +137,7 @@ func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) (string, error) {
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
-// EncryptWithPublicKey decrypts given []byte, with private key
+// DecryptWithPrivateKey decrypts given []byte, with private key
 func DecryptWithPrivateKey(cipherText string, priv *rsa.PrivateKey) (string, error) {
 	ct, _ := base64.StdEncoding.DecodeString(cipherText)
 	label := []byte(Label)
