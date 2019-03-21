@@ -1,5 +1,5 @@
 # Golang Oauth2 with jwt OAuth 2.0
-[![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/roshanr83/goOauth2)](https://goreportcard.com/report/github.com/roshanr83/goOauth2) [![GoDoc][godoc-image]][godoc-url]
+[![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/roshanr83/goOauth2?branch=master)](https://goreportcard.com/report/github.com/roshanr83/goOauth2) [![GoDoc][godoc-image]][godoc-url]
 
 This project is modified version of [go-oauth2/oauth2](https://github.com/go-oauth2/oauth2). Since that didn't meet my requirement so I modified the code so I can implement oauth2 alongside with JWT.
 <br>
