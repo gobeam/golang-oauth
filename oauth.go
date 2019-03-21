@@ -169,8 +169,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	}
 
 	accessTokenPayload := AccessTokenPayload{}
-	accessId, err := uuid.NewRandom()
-	refreshId, err := uuid.NewRandom()
+	accessId := uuid.New()
 	if err != nil {
 		return tokenResp, err
 	}
@@ -200,7 +199,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	refreshTokenPayload.AccessTokenId = accessId
 	refreshToken := &RefreshTokens{
 		Model{
-			ID:        refreshId,
+			ID:        uuid.New(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -374,6 +373,9 @@ func decryptAccessToken(token string) (*AccessTokenPayload, error) {
 		return &tm, err
 	}
 	dec, err := DecryptWithPrivateKey(token, prikey)
+	if err != nil {
+		return &tm, err
+	}
 	jsoniter.Unmarshal([]byte(dec), &tm)
 	if tm.UserId == 0 {
 		return &tm, errors.New(InvalidAccessToken)
@@ -392,8 +394,11 @@ func decryptRefreshToken(token string) (*RefreshTokenPayload, error) {
 	if err != nil {
 		return &tm, err
 	}
-	dec, err := DecryptWithPrivateKey(token, prikey)
-	jsoniter.Unmarshal([]byte(dec), &tm)
+	decypher, err := DecryptWithPrivateKey(token, prikey)
+	if err != nil {
+		return &tm, err
+	}
+	jsoniter.Unmarshal([]byte(decypher), &tm)
 	if tm.AccessTokenId == uuid.Nil {
 		return &tm, errors.New(InvalidRefreshToken)
 	}
