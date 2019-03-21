@@ -1,4 +1,4 @@
-package go_oauth2
+package goOauth2
 
 import (
 	_ "github.com/go-sql-driver/mysql"

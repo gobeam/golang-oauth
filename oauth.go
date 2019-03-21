@@ -1,4 +1,4 @@
-package go_oauth2
+package goOauth2
 
 import (
 	"bytes"
@@ -136,7 +136,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	_, privatePemNotExistserr := os.Stat(PublicPem)
 
 	// check if Public and Private key exists File is present
-	if  os.IsNotExist(publicPemNotExistserr) || os.IsNotExist(privatePemNotExistserr) {
+	if os.IsNotExist(publicPemNotExistserr) || os.IsNotExist(privatePemNotExistserr) {
 		priv, pub := GenerateKeyPair(BitSize)
 		SavePEMKey(PrivatePem, priv)
 		SavePublicPEMKey(PublicPem, pub)
