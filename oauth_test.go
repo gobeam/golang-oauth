@@ -8,21 +8,16 @@ import (
 )
 
 var dbStore *Store
-
 var accessTokenString string
 var refreshTokenString string
 var accessId uuid.UUID
 var userID int64 = 1
 
-const (
-	dbConfig = "root:root@tcp(127.0.0.1:3306)/goauth?charset=utf8&parseTime=True&loc=Local"
-)
 func init() {
 	store := NewDefaultStore(
 		NewConfig(dbConfig),
 	)
 	dbStore = store
-	//defer store.Close()
 }
 
 func TestCreateClient(t *testing.T) {
@@ -58,7 +53,6 @@ func TestCreate(t *testing.T) {
 	}
 	accessTokenString = resp.AccessToken
 }
-
 
 func TestGetByAccess(t *testing.T) {
 
@@ -102,5 +96,5 @@ func TestClearByAccessToken(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
+	defer dbStore.Close()
 }
-

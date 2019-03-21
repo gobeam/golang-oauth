@@ -2,8 +2,78 @@ package go_oauth2
 
 import (
 	"github.com/google/uuid"
+	"gopkg.in/gorp.v2"
+	"io"
 	"time"
 )
+
+// Default Model
+type Model struct {
+	ID        uuid.UUID `db:"id,primarykey"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
+// Oauth Access Token model
+type AccessTokens struct {
+	Model
+	AccessTokenPayload
+	Name    string `db:"name"`
+	Revoked bool   `db:"revoked"`
+}
+
+// Access Token model
+type AccessTokenPayload struct {
+	UserId    int64     `db:"user_id"`
+	ClientId  uuid.UUID `db:"client_id"`
+	ExpiredAt int64     `db:"expired_at"`
+}
+
+// Refresh token Model
+type RefreshTokenPayload struct {
+	AccessTokenId uuid.UUID `db:"access_token_id"`
+}
+
+// Oauth Refresh Tokens model
+type RefreshTokens struct {
+	Model
+	RefreshTokenPayload
+	Revoked bool `db:"revoked"`
+}
+
+//Oauth Clients model
+type Clients struct {
+	Model
+	UserId   int64  `db:"user_id"`
+	Name     string `db:"name"`
+	Secret   string `db:"secret"`
+	Revoked  bool   `db:"revoked"`
+	Redirect string `db:"redirect"`
+}
+
+// Store mysql token store model
+type Store struct {
+	clientTable  string
+	accessTable  string
+	refreshTable string
+	db           *gorp.DbMap
+	stdout       io.Writer
+	ticker       *time.Ticker
+}
+
+// Config mysql configuration
+type Config struct {
+	DSN          string
+	MaxLifetime  time.Duration
+	MaxOpenConns int
+	MaxIdleConns int
+}
+
+// Token response model after creating access token and refresh token
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
 
 // Token struct which hold token details
 type Token struct {

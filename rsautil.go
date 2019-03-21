@@ -13,19 +13,15 @@ import (
 	"os"
 )
 
-const (
-	PublicKey  = "PUBLIC KEY"
-	PrivateKey = "PRIVATE KEY"
-)
-
-// getnerate random key
+// random key characters to choose from
 var RandomKeyCharacters = []byte("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
+// Generate random characters from RandomKeyCharacters
 func RandomKey(length int) string {
 	bytes := make([]byte, length)
 	for i := 0; i < length; i++ {
 		randInt := randInt(0, len(RandomKeyCharacters))
-		bytes[i] = RandomKeyCharacters[randInt:randInt+1][0]
+		bytes[i] = RandomKeyCharacters[randInt : randInt+1][0]
 	}
 	return string(bytes)
 }
@@ -44,7 +40,7 @@ func GenerateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey) {
 	return privkey, &privkey.PublicKey
 }
 
-
+// Save generated *rsa.PrivateKey to file
 func SavePEMKey(fileName string, key *rsa.PrivateKey) {
 	outFile, err := os.Create(fileName)
 	checkError(err)
@@ -59,6 +55,7 @@ func SavePEMKey(fileName string, key *rsa.PrivateKey) {
 	checkError(err)
 }
 
+// Save generated *rsa.PublicKey to file
 func SavePublicPEMKey(fileName string, pubkey *rsa.PublicKey) {
 	pubASN1, err := x509.MarshalPKIXPublicKey(pubkey)
 	checkError(err)
@@ -76,6 +73,7 @@ func SavePublicPEMKey(fileName string, pubkey *rsa.PublicKey) {
 	checkError(err)
 }
 
+// check error
 func checkError(err error) {
 	if err != nil {
 		fmt.Println("Fatal error ", err.Error())
@@ -83,7 +81,7 @@ func checkError(err error) {
 	}
 }
 
-// BytesToPublicKey bytes to public key
+// BytesToPublicKey converts given bytes to *rsa.PublicKey
 func BytesToPublicKey(pub []byte) *rsa.PublicKey {
 	block, _ := pem.Decode(pub)
 	enc := x509.IsEncryptedPEMBlock(block)
@@ -107,7 +105,7 @@ func BytesToPublicKey(pub []byte) *rsa.PublicKey {
 	return key
 }
 
-// BytesToPrivateKey bytes to private key
+// BytesToPublicKey converts given bytes to *rsa.PrivateKey
 func BytesToPrivateKey(priv []byte) *rsa.PrivateKey {
 	block, _ := pem.Decode(priv)
 	enc := x509.IsEncryptedPEMBlock(block)
@@ -127,11 +125,9 @@ func BytesToPrivateKey(priv []byte) *rsa.PrivateKey {
 	return key
 }
 
-// EncryptWithPublicKey encrypts data with public key
+// EncryptWithPublicKey encrypts given []byte, with public key
 func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) (string, error) {
-	label := []byte("OAEP Encrypted")
-	// crypto/rand.Reader is a good source of entropy for randomizing the
-	// encryption function.
+	label := []byte(Label)
 	rng := rand.Reader
 	cipherText, err := rsa.EncryptOAEP(sha256.New(), rng, pub, []byte(msg), label)
 	if err != nil {
@@ -141,10 +137,10 @@ func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) (string, error) {
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
-// DecryptWithPrivateKey decrypts data with private key
+// EncryptWithPublicKey decrypts given []byte, with private key
 func DecryptWithPrivateKey(cipherText string, priv *rsa.PrivateKey) (string, error) {
 	ct, _ := base64.StdEncoding.DecodeString(cipherText)
-	label := []byte("OAEP Encrypted")
+	label := []byte(Label)
 
 	// crypto/rand.Reader is a good source of entropy for blinding the RSA
 	// operation.

@@ -10,86 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/json-iterator/go"
 	"gopkg.in/gorp.v2"
-	"io"
 	"io/ioutil"
 	"os"
 	"time"
 )
 
-// constants
-const (
-	PublicPem           = "public.pem"
-	PrivatePem          = "private.pem"
-	AccessTokenTable    = "oauth_access_tokens"
-	RefreshTokenTable   = "oauth_refresh_tokens"
-	ClientTable         = "oauth_clients"
-	BitSize             = 2048
-	RefreshTokenRevoked = "refresh token already been revoked"
-	AccessTokenRevoked  = "access token has already been revoked"
-	AccessTokenExpired  = "access token has already been expired"
-	InvalidRefreshToken = "invalid refresh token"
-	InvalidAccessToken  = "invalid access token"
-	InvalidClient       = "invalid client"
-	EmptyUserID         = "user id cannot be empty"
-)
-
-// Default Model struct
-type Model struct {
-	ID        uuid.UUID `db:"id,primarykey"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-}
-
-// Oauth Access Token
-type AccessTokens struct {
-	Model
-	AccessTokenPayload
-	Name    string `db:"name"`
-	Revoked bool   `db:"revoked"`
-}
-
-// Payload to encrypt of access token
-type AccessTokenPayload struct {
-	UserId    int64     `db:"user_id"`
-	ClientId  uuid.UUID `db:"client_id"`
-	ExpiredAt int64     `db:"expired_at"`
-}
-
-// payload to encrypt for refresh token
-type RefreshTokenPayload struct {
-	AccessTokenId uuid.UUID `db:"access_token_id"`
-}
-
-// Oauth Refresh Tokens
-type RefreshTokens struct {
-	Model
-	RefreshTokenPayload
-	Revoked bool `db:"revoked"`
-}
-
-//Oauth Clients
-type Clients struct {
-	Model
-	UserId   int64  `db:"user_id"`
-	Name     string `db:"name"`
-	Secret   string `db:"secret"`
-	Revoked  bool   `db:"revoked"`
-	Redirect string `db:"redirect"`
-}
-
-// Store mysql token store
-type Store struct {
-	clientTable  string
-	accessTable  string
-	refreshTable string
-	db           *gorp.DbMap
-	stdout       io.Writer
-	ticker       *time.Ticker
-}
-
 // NewStore create mysql store instance,
 // config mysql configuration,
-// tableName table name (default oauth2_token),
 // GC time interval (in seconds, default 600)
 func NewStore(config *Config, gcInterval int) *Store {
 	db, err := sql.Open("mysql", config.DSN)
@@ -104,7 +31,8 @@ func NewStore(config *Config, gcInterval int) *Store {
 }
 
 // NewStoreWithDB create mysql store instance,
-// db sql.DB
+// db sql.DB,
+// GC time interval (in seconds, default 600)
 func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	store := &Store{
 		db:           &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Engine: "InnoDB", Encoding: "UTF8"}},
@@ -133,7 +61,8 @@ func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	return store
 }
 
-// NewConfig create mysql configuration instance
+// NewConfig create mysql configuration instance,
+// dsn mysql database credential
 func NewConfig(dsn string) *Config {
 	return &Config{
 		DSN:          dsn,
@@ -143,21 +72,8 @@ func NewConfig(dsn string) *Config {
 	}
 }
 
-// Config mysql configuration
-type Config struct {
-	DSN          string
-	MaxLifetime  time.Duration
-	MaxOpenConns int
-	MaxIdleConns int
-}
-
-// Token response after creating both access token and refresh token
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-// NewDefaultStore create mysql store instance
+// NewDefaultStore create mysql store instance,
+// config mysql configuration,
 func NewDefaultStore(config *Config) *Store {
 	return NewStore(config, 0)
 }
@@ -174,6 +90,7 @@ func (s *Store) gc() {
 	}
 }
 
+// Method to clean expired and revoked access token and refresh token during creation of mysql store instance
 func (s *Store) clean() {
 	now := time.Now().Unix()
 	_, accessErr := s.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE expired_at<=? OR (revoked='1')", s.accessTable), now)
@@ -186,6 +103,7 @@ func (s *Store) clean() {
 	}
 }
 
+// Log error
 func (s *Store) errorf(format string, args ...interface{}) {
 	if s.stdout != nil {
 		buf := fmt.Sprintf("[OAUTH2-MYSQL-ERROR]: "+format, args...)
@@ -193,7 +111,8 @@ func (s *Store) errorf(format string, args ...interface{}) {
 	}
 }
 
-// create client
+// create client,
+// userId user's id who created the client
 func (s *Store) CreateClient(userId int64) (Clients, error) {
 	var client Clients
 	if userId == 0 {
@@ -328,7 +247,8 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	return tokenResp, nil
 }
 
-// GetByAccess use the access token for token information data
+// GetByAccess use the access token for token information data,
+// access Access token string
 func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 	accessToken, err := decryptAccessToken(access)
 	if err != nil {
@@ -354,7 +274,8 @@ func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 	return &item, nil
 }
 
-// GetByRefresh use the refresh token for token information data
+// GetByRefresh use the refresh token for token information data,
+// refresh Refresh token string
 func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 	accessToken, err := decryptRefreshToken(refresh)
 	if err != nil {
@@ -410,7 +331,8 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 	return &refreshToken, nil
 }
 
-// Clear all token related to user
+// Clear all token related to user,
+// userId id of user whose access token needs to be cleared
 func (s *Store) ClearByAccessToken(userId int64) error {
 	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? ", s.accessTable)
 	var accessTokenData []AccessTokens
@@ -437,7 +359,7 @@ func (s *Store) ClearByAccessToken(userId int64) error {
 	return err
 }
 
-// revoke from RefreshToken
+// revoke from RefreshToken,
 func (s *Store) RevokeRefreshToken(accessTokenId string) error {
 	query := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE access_token_id IN (?)", s.refreshTable)
 	_, err := s.db.Exec(query, 1, accessTokenId)

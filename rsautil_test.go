@@ -9,7 +9,6 @@ import (
 
 var publicKeyByte *rsa.PublicKey
 var privateKeyByte *rsa.PrivateKey
-
 var message = "Hello World"
 var encryptedData string
 
