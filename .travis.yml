@@ -2,7 +2,7 @@ language: go
 sudo: false
 go_import_path: github.com/roshanr83/go-oauth2
 go:
-- 1.9
+- 1.11.4
 services:
 - mysql
 before_install:
