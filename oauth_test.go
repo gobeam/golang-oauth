@@ -12,6 +12,7 @@ var accessTokenString string
 var refreshTokenString string
 var accessId uuid.UUID
 var userID int64 = 1
+var clientDetail *Clients
 
 func init() {
 	store := NewDefaultStore(
@@ -25,15 +26,16 @@ func TestCreateClient(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
+	clientDetail = &client
 	if client.ID == uuid.Nil {
-		t.Errorf("Client uuid is not expected to be %s", uuid.Nil)
+		t.Errorf("Client uuid invalid client not expected to be %s", uuid.Nil)
 	}
 }
 
 func TestCreate(t *testing.T) {
 	accessToken := &Token{
-		ClientID:        uuid.MustParse("17d5a915-c403-487e-b41f-92fd1074bd30"),
-		ClientSecret:    "UnCMSiJqxFg1O7cqL0MM",
+		ClientID:        clientDetail.ID,
+		ClientSecret:    clientDetail.Secret,
 		UserID:          userID,
 		Scope:           "*",
 		AccessCreateAt:  time.Now(),
