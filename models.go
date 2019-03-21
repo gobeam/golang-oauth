@@ -129,12 +129,12 @@ func (t *Token) GetClientID() uuid.UUID {
 	return t.ClientID
 }
 
-// GetClientID the client id
+// GetClientSecret the client id
 func (t *Token) GetClientSecret() string {
 	return t.ClientSecret
 }
 
-// GetClientID the client id
+// SetClientSecret the client id
 func (t *Token) SetClientSecret() string {
 	return t.ClientSecret
 }

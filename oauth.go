@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" //mysql driver for NewStore
 	"github.com/google/uuid"
 	"github.com/json-iterator/go"
 	"gopkg.in/gorp.v2"
