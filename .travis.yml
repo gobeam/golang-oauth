@@ -2,12 +2,12 @@ language: go
 sudo: false
 go_import_path: github.com/roshanr83/go-oauth2
 go:
-- 1.11.4
+- 1.9
 services:
 - mysql
 before_install:
 - mysql -e 'CREATE DATABASE goauth;'
-- go get -t -v ./...
+- go get ./...
 
 script:
 - go test
