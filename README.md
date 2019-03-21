@@ -114,6 +114,6 @@ Please make sure to update tests as appropriate.
 ## MIT License
 
 ```
-Copyright (c) 2019 roshan
+Copyright (c) 2019
 ```
 
