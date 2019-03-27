@@ -23,7 +23,7 @@ package main
 import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
-	"github.com/roshanr83/go-oauth2/oauth"
+	"github.com/roshanr83/go-oauth2"
 	"gopkg.in/go-oauth2/mysql.v3"
 	"time"
 )
