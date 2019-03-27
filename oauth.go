@@ -193,6 +193,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 		return tokenResp, err
 	}
 	tokenResp.AccessToken = accessToken
+	tokenResp.ExpiredAt = accessTokenPayload.ExpiredAt
 
 	// set refresh
 	refreshTokenPayload := RefreshTokenPayload{}
