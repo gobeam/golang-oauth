@@ -167,7 +167,6 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	if err != nil {
 		return tokenResp, err
 	}
-
 	accessTokenPayload := AccessTokenPayload{}
 	accessId := uuid.New()
 	if err != nil {
