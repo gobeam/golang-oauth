@@ -73,6 +73,7 @@ type Config struct {
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	ExpiredAt int64 `json:"expired_at"`
 }
 
 // Token struct which hold token details

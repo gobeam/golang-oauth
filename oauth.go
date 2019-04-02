@@ -176,6 +176,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	accessTokenPayload.UserId = info.GetUserID()
 	accessTokenPayload.ClientId = info.GetClientID()
 	accessTokenPayload.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
+	tokenResp.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 	oauthAccess := &AccessTokens{
 		Model{
 			ID:        accessId,
