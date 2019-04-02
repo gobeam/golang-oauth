@@ -152,7 +152,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	var client Clients
 	dbErr := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
 	if dbErr != nil {
-		return tokenResp, dbErr
+		return tokenResp, errors.New(InvalidClient)
 	}
 	if client.ID == uuid.Nil {
 		return tokenResp, errors.New(InvalidClient)
@@ -277,7 +277,7 @@ func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 		if err == sql.ErrNoRows {
 			return nil, errors.New(InvalidRefreshToken)
 		}
-		return nil, dbErr
+		return nil, errors.New(InvalidRefreshToken)
 	}
 	if refreshToken.Revoked == true {
 		return nil, errors.New(RefreshTokenRevoked)
@@ -291,7 +291,7 @@ func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 		if err == sql.ErrNoRows {
 			return nil, errors.New(InvalidRefreshToken)
 		}
-		return nil, dbErr
+		return nil, errors.New(InvalidRefreshToken)
 	}
 	if accessTokenData.Revoked == true {
 		return nil, errors.New(InvalidRefreshToken)
