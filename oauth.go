@@ -265,7 +265,7 @@ func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 
 // GetByRefresh use the refresh token for token information data,
 // refresh Refresh token string
-func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
+func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 	accessToken, err := decryptRefreshToken(refresh)
 	if err != nil {
 		return nil, err
@@ -311,7 +311,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		return nil, updateAccessErr
 	}
 
-	return &refreshToken, nil
+	return &accessTokenData, nil
 }
 
 // ClearByAccessToken clears all token related to user,
