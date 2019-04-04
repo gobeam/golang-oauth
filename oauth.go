@@ -152,7 +152,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	var client Clients
 	dbErr := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
 	if dbErr != nil {
-		return tokenResp, dbErr
+		return tokenResp, errors.New(InvalidClient)
 	}
 	if client.ID == uuid.Nil {
 		return tokenResp, errors.New(InvalidClient)
@@ -175,6 +175,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	accessTokenPayload.UserId = info.GetUserID()
 	accessTokenPayload.ClientId = info.GetClientID()
 	accessTokenPayload.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
+	tokenResp.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 	oauthAccess := &AccessTokens{
 		Model{
 			ID:        accessId,
@@ -264,7 +265,7 @@ func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 
 // GetByRefresh use the refresh token for token information data,
 // refresh Refresh token string
-func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
+func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 	accessToken, err := decryptRefreshToken(refresh)
 	if err != nil {
 		return nil, err
@@ -276,7 +277,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		if err == sql.ErrNoRows {
 			return nil, errors.New(InvalidRefreshToken)
 		}
-		return nil, dbErr
+		return nil, errors.New(InvalidRefreshToken)
 	}
 	if refreshToken.Revoked == true {
 		return nil, errors.New(RefreshTokenRevoked)
@@ -290,7 +291,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		if err == sql.ErrNoRows {
 			return nil, errors.New(InvalidRefreshToken)
 		}
-		return nil, dbErr
+		return nil, errors.New(InvalidRefreshToken)
 	}
 	if accessTokenData.Revoked == true {
 		return nil, errors.New(InvalidRefreshToken)
@@ -310,7 +311,7 @@ func (s *Store) GetByRefresh(refresh string) (*RefreshTokens, error) {
 		return nil, updateAccessErr
 	}
 
-	return &refreshToken, nil
+	return &accessTokenData, nil
 }
 
 // ClearByAccessToken clears all token related to user,

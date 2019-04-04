@@ -76,7 +76,7 @@ func TestGetByRefresh(t *testing.T) {
 	if resp.ID == uuid.Nil {
 		t.Errorf("token info uuid is not expected to be %s", uuid.Nil)
 	}
-	accessId = resp.AccessTokenId
+	accessId = resp.ID
 }
 
 func TestRevokeByAccessTokens(t *testing.T) {
