@@ -99,7 +99,7 @@ func main() {
 
 
 
-	//* you can also clear all token related to
+	/* you can also clear all token related to
 	user by passing TokenInfo from valid token */
 	store.ClearByAccessToken(userId int64)
 	
