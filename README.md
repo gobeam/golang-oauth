@@ -124,7 +124,6 @@ Please make sure to update tests as appropriate.
 ## Acknowledgments
 <ol>
 <li> https://github.com/go-oauth2/oauth2 </li>
-<li>https://github.com/go-oauth2/oauth2</li>
 </ol>
 
 
