@@ -37,17 +37,23 @@ func main() {
 
 
 
-	//to create client
-	// where 1 is user ID Which will return Oauth Clients struct which include client id and secret whic is later used to validate client credentials
+	/* to create client
+	 where 1 is user ID Which will return Oauth Clients
+	 struct which include client id and secret whic is
+	 later used to validate client credentials */
 	store.CreateClient(userId int64)
 
 
 
-	//create access token alongside refresh token
-	//Since it will not include user authentication since it can be  different for everyone you will have to authenticate user and pass user id to Token struct.
-	// ... part you will authenticate user and get userID
-	// you will have to provide all the field given below. ClientID must be  valid uuid. AccessExpiresIn is required to mark expiration time.
-	// in response you will get TokenResponse including accesstoken and refeshtoken.
+	/* create access token alongside refresh token
+	Since it will not include user authentication
+	because it can be  different for everyone you will
+	have to authenticate user and pass user id to Token struct.
+	 Here you will authenticate user and get userID
+	 you will have to provide all the field given below.
+	 ClientID must be  valid uuid. AccessExpiresIn is required
+	 to mark expiration time. In response you will get TokenResponse
+	 including accesstoken and refeshtoken. */
 	accessToken := &oauth.Token{
 		ClientID:        uuid.MustParse("17d5a915-c403-487e-b41f-92fd1074bd30"),
 		ClientSecret:    "UnCMSiJqxFg1O7cqL0MM",
@@ -61,30 +67,42 @@ func main() {
 
 
 
-	//To check valid accessToken, you should pass accessToken and it will check if it is valid accesstoken including if it is valid and non revoked. If it is valid in response it will return AccessTokens data correspond to that token
+	/*To check valid accessToken, you should
+	pass accessToken and it will check if it is valid accesstoken
+	including if it is valid and non revoked. If it is valid
+	in response it will return AccessTokens data correspond to that token */
 	resp, err := store.GetByAccess(accessToken string)
 
 
 
-	//To check valid refreshToken, you should pass refreshToken and it will check if it is valid refreshToken including if it is valid and non revoked and if it;s related accessToken is already revoked or not. If it is valid in response it will return AccessTokens data correspond to that token.
-	//Note that refresh token after using one time will be revoked and cannot be used again
+	/* To check valid refreshToken, you should pass
+	refreshToken and it will check if it is valid
+	refreshToken including if it is valid and non revoked
+	and if it;s related accessToken is already revoked or
+	not. If it is valid in response it will return AccessTokens
+	data correspond to that token*/
+	/* Note that refresh token after using one time
+	will be revoked and cannot be used again */
 	resp, err := store.GetByRefresh(refreshToken string)
 
 
 
-	//You can manually revoke access token by passing userId which you can get from valid token info
+	/*You can manually revoke access token by passing
+	userId which you can get from valid token info */
 	store.RevokeByAccessTokens(userId int64)
 
 
 
-	//You can manually revoke refresh token by passing accessTokenId which you can get from valid token info
+	/*You can manually revoke refresh token by passing
+	accessTokenId which you can get from valid token info */
 	store.RevokeRefreshToken(accessTokenId string)
 
 
 
-	//you can also clear all token related to user by passing TokenInfo from valid token
+	//* you can also clear all token related to
+	user by passing TokenInfo from valid token */
 	store.ClearByAccessToken(userId int64)
-	// ...
+	
 }
 
 
