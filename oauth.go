@@ -50,7 +50,7 @@ func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	if err != nil {
 		panic(err)
 	}
-	store.db.CreateIndex()
+	_ = store.db.CreateIndex()
 
 	interval := 600
 	if gcInterval > 0 {
@@ -81,7 +81,7 @@ func NewDefaultStore(config *Config) *Store {
 // Close close the store
 func (s *Store) Close() {
 	s.ticker.Stop()
-	s.db.Db.Close()
+	_ = s.db.Db.Close()
 }
 
 func (s *Store) gc() {
@@ -107,7 +107,7 @@ func (s *Store) clean() {
 func (s *Store) errorf(format string, args ...interface{}) {
 	if s.stdout != nil {
 		buf := fmt.Sprintf("[OAUTH2-MYSQL-ERROR]: "+format, args...)
-		s.stdout.Write([]byte(buf))
+		_, _ = s.stdout.Write([]byte(buf))
 	}
 }
 
@@ -164,14 +164,8 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 		return tokenResp, err
 	}
 	pubkey := BytesToPublicKey(pubKeyFile)
-	if err != nil {
-		return tokenResp, err
-	}
 	accessTokenPayload := AccessTokenPayload{}
 	accessId := uuid.New()
-	if err != nil {
-		return tokenResp, err
-	}
 	accessTokenPayload.UserId = info.GetUserID()
 	accessTokenPayload.ClientId = info.GetClientID()
 	accessTokenPayload.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
@@ -187,7 +181,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 		false,
 	}
 	accessByte := new(bytes.Buffer)
-	json.NewEncoder(accessByte).Encode(accessTokenPayload)
+	_ = json.NewEncoder(accessByte).Encode(accessTokenPayload)
 	accessToken, err := EncryptWithPublicKey(accessByte.Bytes(), pubkey)
 	if err != nil {
 		return tokenResp, err
@@ -209,7 +203,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	}
 
 	refreshTokenByte := new(bytes.Buffer)
-	json.NewEncoder(refreshTokenByte).Encode(refreshTokenPayload)
+	_ = json.NewEncoder(refreshTokenByte).Encode(refreshTokenPayload)
 
 	refToken, err := EncryptWithPublicKey(refreshTokenByte.Bytes(), pubkey)
 	tokenResp.RefreshToken = refToken
@@ -218,11 +212,11 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	}
 
 	//revoke all old access tokens
-	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id = ?", s.accessTable)
-	_, updateErr := s.db.Exec(updateQuery, 1, info.GetUserID())
-	if updateErr != nil {
-		return tokenResp, updateErr
-	}
+	//updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE user_id = ?", s.accessTable)
+	//_, updateErr := s.db.Exec(updateQuery, 1, info.GetUserID())
+	//if updateErr != nil {
+	//	return tokenResp, updateErr
+	//}
 
 	accessErr := s.db.Insert(oauthAccess)
 	if accessErr != nil {
@@ -230,7 +224,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	}
 
 	refErr := s.db.Insert(refreshToken)
-	if accessErr != nil {
+	if refErr != nil {
 		return tokenResp, refErr
 	}
 	return tokenResp, nil
@@ -370,14 +364,11 @@ func decryptAccessToken(token string) (*AccessTokenPayload, error) {
 		return &tm, err
 	}
 	prikey := BytesToPrivateKey(privKey)
-	if err != nil {
-		return &tm, err
-	}
 	dec, err := DecryptWithPrivateKey(token, prikey)
 	if err != nil {
 		return &tm, err
 	}
-	jsoniter.Unmarshal([]byte(dec), &tm)
+	_ = jsoniter.Unmarshal([]byte(dec), &tm)
 	if tm.UserId == 0 {
 		return &tm, errors.New(InvalidAccessToken)
 	}
@@ -392,14 +383,11 @@ func decryptRefreshToken(token string) (*RefreshTokenPayload, error) {
 		return &tm, err
 	}
 	prikey := BytesToPrivateKey(privKey)
-	if err != nil {
-		return &tm, err
-	}
 	decypher, err := DecryptWithPrivateKey(token, prikey)
 	if err != nil {
 		return &tm, err
 	}
-	jsoniter.Unmarshal([]byte(decypher), &tm)
+	_ = jsoniter.Unmarshal([]byte(decypher), &tm)
 	if tm.AccessTokenId == uuid.Nil {
 		return &tm, errors.New(InvalidRefreshToken)
 	}
