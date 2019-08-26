@@ -93,7 +93,7 @@ func (s *Store) gc() {
 // clean is method to clean expired and revoked access token and refresh token during creation of mysql store instance
 func (s *Store) clean() {
 	now := time.Now().Unix()
-	_, accessErr := s.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE expired_at<=? OR (revoked='1')", s.accessTable), now)
+	_, accessErr := s.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE (revoked='1')", s.accessTable))
 	_, refreshErr := s.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE revoked='1'", s.refreshTable), now)
 	if accessErr != nil {
 		s.errorf(accessErr.Error())
@@ -150,8 +150,8 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	//check if valid client
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=? AND secret=? LIMIT 1", s.clientTable)
 	var client Clients
-	dbErr := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
-	if dbErr != nil {
+	err := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
+	if err != nil {
 		return tokenResp, errors.New(InvalidClient)
 	}
 	if client.ID == uuid.Nil {
@@ -244,12 +244,9 @@ func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
 
 	query := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? AND expired_at=? LIMIT 1", s.accessTable)
 	var item AccessTokens
-	dbErr := s.db.SelectOne(&item, query, accessToken.UserId, accessToken.ExpiredAt)
-	if dbErr != nil {
-		if err == sql.ErrNoRows {
-			return nil, errors.New(InvalidAccessToken)
-		}
-		return nil, dbErr
+	err = s.db.SelectOne(&item, query, accessToken.UserId, accessToken.ExpiredAt)
+	if err != nil {
+		return nil, errors.New(InvalidAccessToken)
 	}
 	if item.Revoked == true {
 		return nil, errors.New(AccessTokenRevoked)
@@ -266,11 +263,8 @@ func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 	}
 	query := fmt.Sprintf("SELECT * FROM %s WHERE access_token_id=? LIMIT 1", s.refreshTable)
 	var refreshToken RefreshTokens
-	dbErr := s.db.SelectOne(&refreshToken, query, accessToken.AccessTokenId)
-	if dbErr != nil {
-		if err == sql.ErrNoRows {
-			return nil, errors.New(InvalidRefreshToken)
-		}
+	err = s.db.SelectOne(&refreshToken, query, accessToken.AccessTokenId)
+	if err != nil {
 		return nil, errors.New(InvalidRefreshToken)
 	}
 	if refreshToken.Revoked == true {
@@ -280,11 +274,8 @@ func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 	//check if associated access token is revoked or not
 	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE id=? LIMIT 1", s.accessTable)
 	var accessTokenData AccessTokens
-	findErr := s.db.SelectOne(&accessTokenData, checkAccessTokenquery, accessToken.AccessTokenId)
-	if findErr != nil {
-		if err == sql.ErrNoRows {
-			return nil, errors.New(InvalidRefreshToken)
-		}
+	err = s.db.SelectOne(&accessTokenData, checkAccessTokenquery, accessToken.AccessTokenId)
+	if err != nil {
 		return nil, errors.New(InvalidRefreshToken)
 	}
 	if accessTokenData.Revoked == true {
@@ -293,16 +284,16 @@ func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 
 	// revoke refresh token after one time use
 	updateQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE access_token_id IN (?)", s.refreshTable)
-	_, updateErr := s.db.Exec(updateQuery, 1, accessToken.AccessTokenId)
-	if updateErr != nil {
-		return nil, updateErr
+	_, err = s.db.Exec(updateQuery, 1, accessToken.AccessTokenId)
+	if err != nil {
+		return nil, err
 	}
 
 	// revoke associated access token after use
 	updateAccessTokenQuery := fmt.Sprintf("UPDATE %s SET `revoked`=? WHERE id=?", s.accessTable)
-	_, updateAccessErr := s.db.Exec(updateAccessTokenQuery, 1, accessToken.AccessTokenId)
-	if updateAccessErr != nil {
-		return nil, updateAccessErr
+	_, err = s.db.Exec(updateAccessTokenQuery, 1, accessToken.AccessTokenId)
+	if err != nil {
+		return nil, err
 	}
 
 	return &accessTokenData, nil

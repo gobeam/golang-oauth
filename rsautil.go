@@ -150,7 +150,7 @@ func DecryptWithPrivateKey(cipherText string, priv *rsa.PrivateKey) (string, err
 		fmt.Fprintf(os.Stderr, "Error from decryption: %s\n", err)
 		return "", err
 	}
-	fmt.Printf("Plaintext: %s\n", string(plaintext))
+	//fmt.Printf("Plaintext: %s\n", string(plaintext))
 
 	return string(plaintext), nil
 }

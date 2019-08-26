@@ -9,7 +9,7 @@ import (
 
 var publicKeyByte *rsa.PublicKey
 var privateKeyByte *rsa.PrivateKey
-var message = "Hello World"
+var message = ""
 var encryptedData string
 
 func TestRandomKey(t *testing.T) {
