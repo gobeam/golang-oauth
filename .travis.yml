@@ -1,16 +1,17 @@
-language: go
+language: c
+os:
+  - linux
+  - osx
+dist: trusty
 sudo: false
-go_import_path: github.com/roshanr83/goOauth2
-go:
-- 1.9
 services:
-- mysql
+  - mysql
 before_install:
-- mysql -e 'CREATE DATABASE goauth;'
-- go get ./...
-
+  - mysql -e 'CREATE DATABASE goauth;'
+install:
+  - eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=master bash)"
 script:
-- go test
-
+  - go build
+  - go test
 after_success:
-- bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash)
