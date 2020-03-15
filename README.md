@@ -1,5 +1,5 @@
 # Golang Oauth2 with jwt OAuth 2.0
-[![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/roshanr83/goOauth2?branch=master)](https://goreportcard.com/report/github.com/roshanr83/goOauth2) [![GoDoc][godoc-image]][godoc-url]
+[![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/gobeam/goOauth2?branch=master)](https://goreportcard.com/report/github.com/gobeam/goOauth2) [![GoDoc][godoc-image]][godoc-url]
 
 This project is modified version of [go-oauth2/oauth2](https://github.com/go-oauth2/oauth2). Since that didn't meet my requirement so I modified the code so I can implement oauth2 alongside with JWT.
 <br>
@@ -7,7 +7,7 @@ This package uses <b>EncryptOAEP</b> which encrypts the given data with <b>RSA-O
 <br>
 This package only handles Resource Owner Password Credentials type.
 <br>
-Official docs: [Here](https://godoc.org/github.com/roshanr83/goOauth2)
+Official docs: [Here](https://godoc.org/github.com/gobeam/goOauth2)
 
 ## Install
 
@@ -134,7 +134,7 @@ Please make sure to update tests as appropriate.
 Copyright (c) 2019
 ```
 
-[Build-Status-Url]: https://travis-ci.org/roshanr83/goOauth2
-[Build-Status-Image]: https://travis-ci.org/roshanr83/goOauth2.svg?branch=master
-[godoc-url]: https://godoc.org/github.com/roshanr83/goOauth2
-[godoc-image]: https://godoc.org/github.com/roshanr83/goOauth2?status.svg
+[Build-Status-Url]: https://travis-ci.org/gobeam/goOauth2
+[Build-Status-Image]: https://travis-ci.org/gobeam/goOauth2.svg?branch=master
+[godoc-url]: https://godoc.org/github.com/gobeam/goOauth2
+[godoc-image]: https://godoc.org/github.com/gobeam/goOauth2?status.svg
