@@ -136,5 +136,5 @@ Copyright (c) 2019
 
 [Build-Status-Url]: https://travis-ci.org/gobeam/goOauth2
 [Build-Status-Image]: https://travis-ci.org/gobeam/goOauth2.svg?branch=master
-[godoc-url]: https://godoc.org/github.com/gobeam/goOauth2
+[godoc-url]: https://pkg.go.dev/github.com/gobeam/goOauth2?tab=doc
 [godoc-image]: https://godoc.org/github.com/gobeam/goOauth2?status.svg
