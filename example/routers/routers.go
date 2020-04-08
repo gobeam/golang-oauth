@@ -45,7 +45,6 @@ func SetupRouter(store *goOauth2.Store) *gin.Engine {
 
 			postController := controllers.NewPostController()
 			ResourceFulRouter(priv.Group("/post"), postController)
-
 			categoryController := controllers.NewCategoryController()
 			ResourceFulRouter(priv.Group("/category"), categoryController)
 		}
