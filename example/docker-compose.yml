@@ -1,0 +1,117 @@
+version: "2"
+
+services:
+#  frontend_service:
+#    build:
+#      context: .
+#      dockerfile: frontend/Dockerfile
+#    container_name: frontend_service.dev
+#    ports:
+#      - "3000:3000"
+#    volumes:
+#      - .:/frontend_service
+
+  auth_service:
+    build:
+      context: .
+      dockerfile: docker/service/Dockerfile
+    container_name: auth_service.dev
+    restart: on-failure
+    volumes:
+      - .:/authService
+    #    working_dir: /authService
+    #    command: /bin/sh -c "./authService-linux-amd64"
+    ports:
+      - "6767:6767" # http
+    depends_on:
+      - rabbitmq
+      - db_auth_service
+    networks:
+      - authServiceDb
+      - rabbitmqNet
+
+  db_auth_service:
+    image: mariadb:latest
+    container_name: db_auth_service.dev
+    volumes:
+      #- ../../_local_mysql_data:/var/lib/mysql
+      #- ./shopee.sql:/tmp/shopee.sql
+      #- ./import.sh:/tmp/import.sh
+      - ./mysql_init:/docker-entrypoint-initdb.d
+    networks:
+      - authServiceDb
+    restart: on-failure
+    environment:
+      - MYSQL_ROOT_PASSWORD=bajraHanyo8848
+      - MYSQL_DATABASE=micro
+      - MYSQL_USER=bajra
+      - MYSQL_PASSWORD=bajraHanyo8848
+    ports:
+      - "33061:3306" #It means the application running inside the container is exposed at port 3306
+    hostname: db_auth_service.dev
+
+  post_service:
+    build:
+      context: .
+      dockerfile: postService/docker/service/Dockerfile
+    container_name: post_service.dev
+    restart: "no"
+    volumes:
+      - .:/postService
+    #    working_dir: /authService
+    #    command: /bin/sh -c "./authService-linux-amd64"
+    ports:
+      - "6769:6769" # http
+    depends_on:
+      - rabbitmq
+      - db_auth_service
+    networks:
+      - authServiceDb
+      - rabbitmqNet
+
+#  db_post_service:
+#    image: mariadb:latest
+#    container_name: db_post_service.dev
+#    volumes:
+#      #- ../../_local_mysql_data:/var/lib/mysql
+#      #- ./shopee.sql:/tmp/shopee.sql
+#      #- ./import.sh:/tmp/import.sh
+#      - ./mysql_init:/docker-entrypoint-initdb.d
+#    networks:
+#      - postServiceNetwork
+#    restart: on-failure
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=root
+#      - MYSQL_DATABASE=postdb
+#      - MYSQL_USER=root
+#      - MYSQL_PASSWORD=root
+#    ports:
+#      - "33062:3306" #It means the application running inside the container is exposed at port 3306
+#    hostname: db_post_service.dev
+
+  rabbitmq:
+    build:
+      context: .
+      dockerfile: support/rabbitmq/Dockerfile
+    container_name: rabbitmq.dev
+    networks:
+      - rabbitmqNet
+    environment:
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASSWORD=user
+    command: ["/bin/sh", "-c", "rabbitmq-server"]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: on-failure
+    volumes:
+      - .:/rabbitmq_data
+
+
+networks:
+  authServiceDb:
+    driver: bridge
+  rabbitmqNet:
+    driver: bridge
+#  postServiceNetwork:
+#    driver: bridge

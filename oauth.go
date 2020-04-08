@@ -1,4 +1,4 @@
-package goOauth2
+package golang_oauth
 
 import (
 	"bytes"
@@ -7,13 +7,34 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql" //mysql driver for NewStore
+	"github.com/gobeam/golang-oauth/internal"
+	"github.com/gobeam/golang-oauth/util"
 	"github.com/google/uuid"
 	"github.com/json-iterator/go"
 	"gopkg.in/gorp.v2"
+	"io"
 	"io/ioutil"
 	"os"
 	"time"
 )
+
+// Store mysql token store model
+type Store struct {
+	clientTable  string
+	accessTable  string
+	refreshTable string
+	db           *gorp.DbMap
+	stdout       io.Writer
+	ticker       *time.Ticker
+}
+
+// Config mysql configuration
+type Config struct {
+	DSN          string
+	MaxLifetime  time.Duration
+	MaxOpenConns int
+	MaxIdleConns int
+}
 
 // NewStore create mysql store instance,
 // config mysql configuration,
@@ -36,15 +57,15 @@ func NewStore(config *Config, gcInterval int) *Store {
 func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 	store := &Store{
 		db:           &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{Engine: "InnoDB", Encoding: "UTF8"}},
-		accessTable:  AccessTokenTable,
-		clientTable:  ClientTable,
-		refreshTable: RefreshTokenTable,
+		accessTable:  util.AccessTokenTable,
+		clientTable:  util.ClientTable,
+		refreshTable: util.RefreshTokenTable,
 		stdout:       os.Stderr,
 	}
 
-	store.db.AddTableWithName(AccessTokens{}, store.accessTable)
-	store.db.AddTableWithName(Clients{}, store.clientTable)
-	store.db.AddTableWithName(RefreshTokens{}, store.refreshTable)
+	store.db.AddTableWithName(internal.AccessTokens{}, store.accessTable)
+	store.db.AddTableWithName(internal.Clients{}, store.clientTable)
+	store.db.AddTableWithName(internal.RefreshTokens{}, store.refreshTable)
 
 	err := store.db.CreateTablesIfNotExists()
 	if err != nil {
@@ -113,13 +134,13 @@ func (s *Store) errorf(format string, args ...interface{}) {
 
 // CreateClient creates new client,
 // userId user's id who created the client
-func (s *Store) CreateClient(userId int64) (Clients, error) {
-	var client Clients
+func (s *Store) CreateClient(userId int64) (internal.Clients, error) {
+	var client internal.Clients
 	if userId == 0 {
-		return client, errors.New(EmptyUserID)
+		return client, errors.New(util.EmptyUserID)
 	}
 	client.ID = uuid.New()
-	client.Secret = RandomKey(20)
+	client.Secret = util.RandomKey(20)
 	client.UserId = userId
 	client.CreatedAt = time.Now()
 	client.UpdatedAt = time.Now()
@@ -131,47 +152,47 @@ func (s *Store) CreateClient(userId int64) (Clients, error) {
 }
 
 // Create create and store the new token information
-func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
-	_, publicPemNotExistserr := os.Stat(PublicPem)
-	_, privatePemNotExistserr := os.Stat(PublicPem)
+func (s *Store) Create(info internal.TokenInfo) (internal.TokenResponse, error) {
+	_, publicPemNotExistserr := os.Stat(util.PublicPem)
+	_, privatePemNotExistserr := os.Stat(util.PublicPem)
 
 	// check if Public and Private key exists File is present
 	if os.IsNotExist(publicPemNotExistserr) || os.IsNotExist(privatePemNotExistserr) {
-		priv, pub := GenerateKeyPair(BitSize)
-		SavePEMKey(PrivatePem, priv)
-		SavePublicPEMKey(PublicPem, pub)
+		priv, pub := util.GenerateKeyPair(util.BitSize)
+		util.SavePEMKey(util.PrivatePem, priv)
+		util.SavePublicPEMKey(util.PublicPem, pub)
 	}
 
-	tokenResp := TokenResponse{}
+	tokenResp := internal.TokenResponse{}
 	if info.GetUserID() == 0 {
-		return tokenResp, errors.New(EmptyUserID)
+		return tokenResp, errors.New(util.EmptyUserID)
 	}
 
 	//check if valid client
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=? AND secret=? LIMIT 1", s.clientTable)
-	var client Clients
+	var client internal.Clients
 	err := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
 	if err != nil {
-		return tokenResp, errors.New(InvalidClient)
+		return tokenResp, errors.New(util.InvalidClient)
 	}
 	if client.ID == uuid.Nil {
-		return tokenResp, errors.New(InvalidClient)
+		return tokenResp, errors.New(util.InvalidClient)
 	}
 
 	//create rsa pub
-	pubKeyFile, err := ioutil.ReadFile(PublicPem)
+	pubKeyFile, err := ioutil.ReadFile(util.PublicPem)
 	if err != nil {
 		return tokenResp, err
 	}
-	pubkey := BytesToPublicKey(pubKeyFile)
-	accessTokenPayload := AccessTokenPayload{}
+	pubkey := util.BytesToPublicKey(pubKeyFile)
+	accessTokenPayload := internal.AccessTokenPayload{}
 	accessId := uuid.New()
 	accessTokenPayload.UserId = info.GetUserID()
 	accessTokenPayload.ClientId = info.GetClientID()
 	accessTokenPayload.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 	tokenResp.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
-	oauthAccess := &AccessTokens{
-		Model{
+	oauthAccess := &internal.AccessTokens{
+		internal.Model{
 			ID:        accessId,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
@@ -182,7 +203,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	}
 	accessByte := new(bytes.Buffer)
 	_ = json.NewEncoder(accessByte).Encode(accessTokenPayload)
-	accessToken, err := EncryptWithPublicKey(accessByte.Bytes(), pubkey)
+	accessToken, err := util.EncryptWithPublicKey(accessByte.Bytes(), pubkey)
 	if err != nil {
 		return tokenResp, err
 	}
@@ -190,10 +211,10 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	tokenResp.ExpiredAt = accessTokenPayload.ExpiredAt
 
 	// set refresh
-	refreshTokenPayload := RefreshTokenPayload{}
+	refreshTokenPayload := internal.RefreshTokenPayload{}
 	refreshTokenPayload.AccessTokenId = accessId
-	refreshToken := &RefreshTokens{
-		Model{
+	refreshToken := &internal.RefreshTokens{
+		internal.Model{
 			ID:        uuid.New(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
@@ -205,7 +226,7 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 	refreshTokenByte := new(bytes.Buffer)
 	_ = json.NewEncoder(refreshTokenByte).Encode(refreshTokenPayload)
 
-	refToken, err := EncryptWithPublicKey(refreshTokenByte.Bytes(), pubkey)
+	refToken, err := util.EncryptWithPublicKey(refreshTokenByte.Bytes(), pubkey)
 	tokenResp.RefreshToken = refToken
 	if err != nil {
 		return tokenResp, err
@@ -232,54 +253,54 @@ func (s *Store) Create(info TokenInfo) (TokenResponse, error) {
 
 // GetByAccess use the access token for token information data,
 // access Access token string
-func (s *Store) GetByAccess(access string) (*AccessTokens, error) {
+func (s *Store) GetByAccess(access string) (*internal.AccessTokens, error) {
 	accessToken, err := decryptAccessToken(access)
 	if err != nil {
 		return nil, err
 	}
 	currentTime := time.Now().Unix()
 	if accessToken.ExpiredAt < currentTime {
-		return nil, errors.New(AccessTokenExpired)
+		return nil, errors.New(util.AccessTokenExpired)
 	}
 
 	query := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? AND expired_at=? LIMIT 1", s.accessTable)
-	var item AccessTokens
+	var item internal.AccessTokens
 	err = s.db.SelectOne(&item, query, accessToken.UserId, accessToken.ExpiredAt)
 	if err != nil {
-		return nil, errors.New(InvalidAccessToken)
+		return nil, errors.New(util.InvalidAccessToken)
 	}
 	if item.Revoked == true {
-		return nil, errors.New(AccessTokenRevoked)
+		return nil, errors.New(util.AccessTokenRevoked)
 	}
 	return &item, nil
 }
 
 // GetByRefresh use the refresh token for token information data,
 // refresh Refresh token string
-func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
+func (s *Store) GetByRefresh(refresh string) (*internal.AccessTokens, error) {
 	accessToken, err := decryptRefreshToken(refresh)
 	if err != nil {
 		return nil, err
 	}
 	query := fmt.Sprintf("SELECT * FROM %s WHERE access_token_id=? LIMIT 1", s.refreshTable)
-	var refreshToken RefreshTokens
+	var refreshToken internal.RefreshTokens
 	err = s.db.SelectOne(&refreshToken, query, accessToken.AccessTokenId)
 	if err != nil {
-		return nil, errors.New(InvalidRefreshToken)
+		return nil, errors.New(util.InvalidRefreshToken)
 	}
 	if refreshToken.Revoked == true {
-		return nil, errors.New(RefreshTokenRevoked)
+		return nil, errors.New(util.RefreshTokenRevoked)
 	}
 
 	//check if associated access token is revoked or not
 	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE id=? LIMIT 1", s.accessTable)
-	var accessTokenData AccessTokens
+	var accessTokenData internal.AccessTokens
 	err = s.db.SelectOne(&accessTokenData, checkAccessTokenquery, accessToken.AccessTokenId)
 	if err != nil {
-		return nil, errors.New(InvalidRefreshToken)
+		return nil, errors.New(util.InvalidRefreshToken)
 	}
 	if accessTokenData.Revoked == true {
-		return nil, errors.New(InvalidRefreshToken)
+		return nil, errors.New(util.InvalidRefreshToken)
 	}
 
 	// revoke refresh token after one time use
@@ -303,7 +324,7 @@ func (s *Store) GetByRefresh(refresh string) (*AccessTokens, error) {
 // userId id of user whose access token needs to be cleared
 func (s *Store) ClearByAccessToken(userId int64) error {
 	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? ", s.accessTable)
-	var accessTokenData []AccessTokens
+	var accessTokenData []internal.AccessTokens
 	_, err := s.db.Select(&accessTokenData, checkAccessTokenquery, userId)
 	if err != nil {
 		return err
@@ -348,39 +369,39 @@ func (s *Store) RevokeByAccessTokens(userId int64) error {
 }
 
 // decryptAccessToken decrypts given access token
-func decryptAccessToken(token string) (*AccessTokenPayload, error) {
-	var tm AccessTokenPayload
-	privKey, err := ioutil.ReadFile(PrivatePem)
+func decryptAccessToken(token string) (*internal.AccessTokenPayload, error) {
+	var tm internal.AccessTokenPayload
+	privKey, err := ioutil.ReadFile(util.PrivatePem)
 	if err != nil {
 		return &tm, err
 	}
-	prikey := BytesToPrivateKey(privKey)
-	dec, err := DecryptWithPrivateKey(token, prikey)
+	prikey := util.BytesToPrivateKey(privKey)
+	dec, err := util.DecryptWithPrivateKey(token, prikey)
 	if err != nil {
 		return &tm, err
 	}
 	_ = jsoniter.Unmarshal([]byte(dec), &tm)
 	if tm.UserId == 0 {
-		return &tm, errors.New(InvalidAccessToken)
+		return &tm, errors.New(util.InvalidAccessToken)
 	}
 	return &tm, nil
 }
 
 // decryptRefreshToken decrypts given refresh token
-func decryptRefreshToken(token string) (*RefreshTokenPayload, error) {
-	var tm RefreshTokenPayload
-	privKey, err := ioutil.ReadFile(PrivatePem)
+func decryptRefreshToken(token string) (*internal.RefreshTokenPayload, error) {
+	var tm internal.RefreshTokenPayload
+	privKey, err := ioutil.ReadFile(util.PrivatePem)
 	if err != nil {
 		return &tm, err
 	}
-	prikey := BytesToPrivateKey(privKey)
-	decypher, err := DecryptWithPrivateKey(token, prikey)
+	prikey := util.BytesToPrivateKey(privKey)
+	decypher, err := util.DecryptWithPrivateKey(token, prikey)
 	if err != nil {
 		return &tm, err
 	}
 	_ = jsoniter.Unmarshal([]byte(decypher), &tm)
 	if tm.AccessTokenId == uuid.Nil {
-		return &tm, errors.New(InvalidRefreshToken)
+		return &tm, errors.New(util.InvalidRefreshToken)
 	}
 	return &tm, nil
 }

@@ -1,4 +1,4 @@
-package goOauth2
+package util
 
 import (
 	"crypto/rand"

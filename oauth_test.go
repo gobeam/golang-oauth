@@ -1,7 +1,9 @@
-package goOauth2
+package golang_oauth
 
 import (
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gobeam/golang-oauth/internal"
+	"github.com/gobeam/golang-oauth/util"
 	"github.com/google/uuid"
 	"testing"
 	"time"
@@ -12,11 +14,11 @@ var accessTokenString string
 var refreshTokenString string
 var accessId uuid.UUID
 var userID int64 = 1
-var clientDetail *Clients
+var clientDetail *internal.Clients
 
 func init() {
 	store := NewDefaultStore(
-		NewConfig(dbConfig),
+		NewConfig(util.DbConfig),
 	)
 	dbStore = store
 }
@@ -33,7 +35,7 @@ func TestCreateClient(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	accessToken := &Token{
+	accessToken := &internal.Token{
 		ClientID:        clientDetail.ID,
 		ClientSecret:    clientDetail.Secret,
 		UserID:          userID,

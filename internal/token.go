@@ -1,73 +1,9 @@
-package goOauth2
+package internal
 
 import (
 	"github.com/google/uuid"
-	"gopkg.in/gorp.v2"
-	"io"
 	"time"
 )
-
-// Model is default model
-type Model struct {
-	ID        uuid.UUID `db:"id,primarykey"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-}
-
-// AccessTokens is model for Oauth Access Token
-type AccessTokens struct {
-	Model
-	AccessTokenPayload
-	Name    string `db:"name"`
-	Revoked bool   `db:"revoked"`
-}
-
-// AccessTokenPayload is data that will be encrypted by RSA encryption
-type AccessTokenPayload struct {
-	UserId    int64     `db:"user_id"`
-	ClientId  uuid.UUID `db:"client_id"`
-	ExpiredAt int64     `db:"expired_at"`
-}
-
-// RefreshTokenPayload is model for oauth refresh token
-type RefreshTokenPayload struct {
-	AccessTokenId uuid.UUID `db:"access_token_id"`
-}
-
-// RefreshTokens is model for oauth refresh token
-type RefreshTokens struct {
-	Model
-	RefreshTokenPayload
-	Revoked bool `db:"revoked"`
-}
-
-// Clients is model for oauth clients
-type Clients struct {
-	Model
-	UserId   int64  `db:"user_id"`
-	Name     string `db:"name"`
-	Secret   string `db:"secret"`
-	Revoked  bool   `db:"revoked"`
-	Redirect string `db:"redirect"`
-}
-
-// Store mysql token store model
-type Store struct {
-	clientTable  string
-	accessTable  string
-	refreshTable string
-	db           *gorp.DbMap
-	stdout       io.Writer
-	ticker       *time.Ticker
-}
-
-// Config mysql configuration
-type Config struct {
-	DSN          string
-	MaxLifetime  time.Duration
-	MaxOpenConns int
-	MaxIdleConns int
-}
 
 // TokenResponse model after creating access token and refresh token
 type TokenResponse struct {
@@ -92,7 +28,6 @@ type Token struct {
 // TokenInfo the token information model interface
 type TokenInfo interface {
 	New() TokenInfo
-
 	GetClientID() uuid.UUID
 	SetClientID(uuid.UUID)
 	GetClientSecret() string
@@ -103,12 +38,10 @@ type TokenInfo interface {
 	SetRedirectURI(string)
 	GetScope() string
 	SetScope(string)
-
 	GetAccessCreateAt() time.Time
 	SetAccessCreateAt(time.Time)
 	GetAccessExpiresIn() time.Duration
 	SetAccessExpiresIn(time.Duration)
-
 	GetRefreshCreateAt() time.Time
 	SetRefreshCreateAt(time.Time)
 	GetRefreshExpiresIn() time.Duration

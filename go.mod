@@ -1,6 +1,6 @@
-module github.com/gobeam/goOauth2
+module github.com/gobeam/golang-oauth
 
-go 1.12
+go 1.13
 
 require (
 	github.com/go-sql-driver/mysql v1.5.0
