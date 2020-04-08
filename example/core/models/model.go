@@ -15,5 +15,5 @@ var DB *gorm.DB
 
 func InitializeDb(db *gorm.DB)  {
 	DB = db
-	DB.AutoMigrate(&User{}, &Banner{}, &Category{})
+	DB.AutoMigrate(&User{}, &Category{})
 }

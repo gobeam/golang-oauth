@@ -4,13 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"github.com/gobeam/golang-oauth/example/common"
 	"github.com/gobeam/golang-oauth/example/core/models"
-	"github.com/gobeam/golang-oauth/example/messagingService"
 	"github.com/gobeam/golang-oauth/example/middlewares"
-	"github.com/gobeam/golang-oauth/example/common/configHelper"
-	"github.com/gobeam/golang-oauth/example/postService/model"
-	"io/ioutil"
+	"github.com/google/uuid"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -198,7 +195,7 @@ func (controller PostController) Store(c *gin.Context) {
 		ary[i] = uint(u64)
 	}
 
-	var post model.Post
+	var post models.Post
 	post.Image = actualName
 	post.Title = postRequest.Title
 	post.OgType = postRequest.OgType
@@ -207,13 +204,6 @@ func (controller PostController) Store(c *gin.Context) {
 	post.Description = postRequest.Description
 	post.CategoryId = ary
 	post.CreatedAt = time.Now()
-
-	user := profile.(middleware.Profile)
-	b, _ := json.Marshal(post)
-	err := messagingService.MessagingClient.Publish([]byte(b), configHelper.GetConfig("amqp", "exchange_name").String(), routingKey, eventType, strconv.FormatUint(uint64(user.ID), 10))
-	if err != nil {
-		ErrorResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
+	post.Create()
 	SuccessResponse(c, post)
 }

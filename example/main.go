@@ -1,4 +1,4 @@
-package example
+package main
 
 import (
 	"fmt"
@@ -9,10 +9,6 @@ import (
 	"github.com/gobeam/golang-oauth/example/routers"
 	"log"
 )
-
-
-var appName = "authService"
-var routingKey = "app.service.auth.#"
 
 func main() {
 

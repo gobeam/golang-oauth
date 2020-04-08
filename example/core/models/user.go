@@ -8,7 +8,7 @@ type User struct {
 }
 
 func (u *User)FindById() {
-	DB.First(&u, ID)
+	DB.First(&u, u.ID)
 }
 
 func (u *User) FindByEmail() {

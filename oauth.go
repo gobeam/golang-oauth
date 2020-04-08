@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql" //mysql driver for NewStore
-	"github.com/gobeam/golang-oauth/internal"
+	"github.com/gobeam/golang-oauth/pkg"
 	"github.com/gobeam/golang-oauth/util"
 	"github.com/google/uuid"
 	"github.com/json-iterator/go"
@@ -63,9 +63,9 @@ func NewStoreWithDB(db *sql.DB, gcInterval int) *Store {
 		stdout:       os.Stderr,
 	}
 
-	store.db.AddTableWithName(internal.AccessTokens{}, store.accessTable)
-	store.db.AddTableWithName(internal.Clients{}, store.clientTable)
-	store.db.AddTableWithName(internal.RefreshTokens{}, store.refreshTable)
+	store.db.AddTableWithName(pkg.AccessTokens{}, store.accessTable)
+	store.db.AddTableWithName(pkg.Clients{}, store.clientTable)
+	store.db.AddTableWithName(pkg.RefreshTokens{}, store.refreshTable)
 
 	err := store.db.CreateTablesIfNotExists()
 	if err != nil {
@@ -134,8 +134,8 @@ func (s *Store) errorf(format string, args ...interface{}) {
 
 // CreateClient creates new client,
 // userId user's id who created the client
-func (s *Store) CreateClient(userId int64) (internal.Clients, error) {
-	var client internal.Clients
+func (s *Store) CreateClient(userId int64) (pkg.Clients, error) {
+	var client pkg.Clients
 	if userId == 0 {
 		return client, errors.New(util.EmptyUserID)
 	}
@@ -152,7 +152,7 @@ func (s *Store) CreateClient(userId int64) (internal.Clients, error) {
 }
 
 // Create create and store the new token information
-func (s *Store) Create(info internal.TokenInfo) (internal.TokenResponse, error) {
+func (s *Store) Create(info pkg.TokenInfo) (pkg.TokenResponse, error) {
 	_, publicPemNotExistserr := os.Stat(util.PublicPem)
 	_, privatePemNotExistserr := os.Stat(util.PublicPem)
 
@@ -163,14 +163,14 @@ func (s *Store) Create(info internal.TokenInfo) (internal.TokenResponse, error) 
 		util.SavePublicPEMKey(util.PublicPem, pub)
 	}
 
-	tokenResp := internal.TokenResponse{}
+	tokenResp := pkg.TokenResponse{}
 	if info.GetUserID() == 0 {
 		return tokenResp, errors.New(util.EmptyUserID)
 	}
 
 	//check if valid client
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=? AND secret=? LIMIT 1", s.clientTable)
-	var client internal.Clients
+	var client pkg.Clients
 	err := s.db.SelectOne(&client, query, info.GetClientID(), info.GetClientSecret())
 	if err != nil {
 		return tokenResp, errors.New(util.InvalidClient)
@@ -185,14 +185,14 @@ func (s *Store) Create(info internal.TokenInfo) (internal.TokenResponse, error) 
 		return tokenResp, err
 	}
 	pubkey := util.BytesToPublicKey(pubKeyFile)
-	accessTokenPayload := internal.AccessTokenPayload{}
+	accessTokenPayload := pkg.AccessTokenPayload{}
 	accessId := uuid.New()
 	accessTokenPayload.UserId = info.GetUserID()
 	accessTokenPayload.ClientId = info.GetClientID()
 	accessTokenPayload.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 	tokenResp.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
-	oauthAccess := &internal.AccessTokens{
-		internal.Model{
+	oauthAccess := &pkg.AccessTokens{
+		pkg.Model{
 			ID:        accessId,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
@@ -211,10 +211,10 @@ func (s *Store) Create(info internal.TokenInfo) (internal.TokenResponse, error) 
 	tokenResp.ExpiredAt = accessTokenPayload.ExpiredAt
 
 	// set refresh
-	refreshTokenPayload := internal.RefreshTokenPayload{}
+	refreshTokenPayload := pkg.RefreshTokenPayload{}
 	refreshTokenPayload.AccessTokenId = accessId
-	refreshToken := &internal.RefreshTokens{
-		internal.Model{
+	refreshToken := &pkg.RefreshTokens{
+		pkg.Model{
 			ID:        uuid.New(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
@@ -253,7 +253,7 @@ func (s *Store) Create(info internal.TokenInfo) (internal.TokenResponse, error) 
 
 // GetByAccess use the access token for token information data,
 // access Access token string
-func (s *Store) GetByAccess(access string) (*internal.AccessTokens, error) {
+func (s *Store) GetByAccess(access string) (*pkg.AccessTokens, error) {
 	accessToken, err := decryptAccessToken(access)
 	if err != nil {
 		return nil, err
@@ -264,7 +264,7 @@ func (s *Store) GetByAccess(access string) (*internal.AccessTokens, error) {
 	}
 
 	query := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? AND expired_at=? LIMIT 1", s.accessTable)
-	var item internal.AccessTokens
+	var item pkg.AccessTokens
 	err = s.db.SelectOne(&item, query, accessToken.UserId, accessToken.ExpiredAt)
 	if err != nil {
 		return nil, errors.New(util.InvalidAccessToken)
@@ -277,13 +277,13 @@ func (s *Store) GetByAccess(access string) (*internal.AccessTokens, error) {
 
 // GetByRefresh use the refresh token for token information data,
 // refresh Refresh token string
-func (s *Store) GetByRefresh(refresh string) (*internal.AccessTokens, error) {
+func (s *Store) GetByRefresh(refresh string) (*pkg.AccessTokens, error) {
 	accessToken, err := decryptRefreshToken(refresh)
 	if err != nil {
 		return nil, err
 	}
 	query := fmt.Sprintf("SELECT * FROM %s WHERE access_token_id=? LIMIT 1", s.refreshTable)
-	var refreshToken internal.RefreshTokens
+	var refreshToken pkg.RefreshTokens
 	err = s.db.SelectOne(&refreshToken, query, accessToken.AccessTokenId)
 	if err != nil {
 		return nil, errors.New(util.InvalidRefreshToken)
@@ -294,7 +294,7 @@ func (s *Store) GetByRefresh(refresh string) (*internal.AccessTokens, error) {
 
 	//check if associated access token is revoked or not
 	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE id=? LIMIT 1", s.accessTable)
-	var accessTokenData internal.AccessTokens
+	var accessTokenData pkg.AccessTokens
 	err = s.db.SelectOne(&accessTokenData, checkAccessTokenquery, accessToken.AccessTokenId)
 	if err != nil {
 		return nil, errors.New(util.InvalidRefreshToken)
@@ -324,7 +324,7 @@ func (s *Store) GetByRefresh(refresh string) (*internal.AccessTokens, error) {
 // userId id of user whose access token needs to be cleared
 func (s *Store) ClearByAccessToken(userId int64) error {
 	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? ", s.accessTable)
-	var accessTokenData []internal.AccessTokens
+	var accessTokenData []pkg.AccessTokens
 	_, err := s.db.Select(&accessTokenData, checkAccessTokenquery, userId)
 	if err != nil {
 		return err
@@ -369,8 +369,8 @@ func (s *Store) RevokeByAccessTokens(userId int64) error {
 }
 
 // decryptAccessToken decrypts given access token
-func decryptAccessToken(token string) (*internal.AccessTokenPayload, error) {
-	var tm internal.AccessTokenPayload
+func decryptAccessToken(token string) (*pkg.AccessTokenPayload, error) {
+	var tm pkg.AccessTokenPayload
 	privKey, err := ioutil.ReadFile(util.PrivatePem)
 	if err != nil {
 		return &tm, err
@@ -388,8 +388,8 @@ func decryptAccessToken(token string) (*internal.AccessTokenPayload, error) {
 }
 
 // decryptRefreshToken decrypts given refresh token
-func decryptRefreshToken(token string) (*internal.RefreshTokenPayload, error) {
-	var tm internal.RefreshTokenPayload
+func decryptRefreshToken(token string) (*pkg.RefreshTokenPayload, error) {
+	var tm pkg.RefreshTokenPayload
 	privKey, err := ioutil.ReadFile(util.PrivatePem)
 	if err != nil {
 		return &tm, err

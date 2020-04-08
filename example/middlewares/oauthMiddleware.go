@@ -4,9 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	goOauth2 "github.com/gobeam/golang-oauth"
-	"github.com/google/uuid"
 	"github.com/gobeam/golang-oauth/example/core/models"
 	"github.com/gobeam/golang-oauth/example/shared/passhash"
+	"github.com/gobeam/golang-oauth/pkg"
+	"github.com/google/uuid"
 	"net/http"
 	"strings"
 	"time"
@@ -169,7 +170,7 @@ func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
 				oAuthAbort(c, err.Error())
 				return
 			}
-			accessToken := &goOauth2.Token{
+			accessToken := &pkg.Token{
 				ClientID:        uuid.MustParse(credential.ClientID),
 				ClientSecret:    credential.ClientSecret,
 				UserID:          int64(refreshToken.UserId),
@@ -197,8 +198,8 @@ func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
 	}
 }
 
-func createToken(cred PasswordCredential, user models.User) (accessToken *goOauth2.Token) {
-	accessToken = &goOauth2.Token{
+func createToken(cred PasswordCredential, user models.User) (accessToken *pkg.Token) {
+	accessToken = &pkg.Token{
 		ClientID:        uuid.MustParse(cred.ClientID),
 		ClientSecret:    cred.ClientSecret,
 		UserID:          int64(user.ID),
