@@ -2,7 +2,7 @@ package routers
 
 import (
 	"github.com/gin-gonic/gin"
-	goOauth2 "github.com/gobeam/golang-oauth"
+	oauth2 "github.com/gobeam/golang-oauth"
 	"github.com/gobeam/golang-oauth/example/controllers"
 	"github.com/gobeam/golang-oauth/example/middlewares"
 )
@@ -21,7 +21,7 @@ func ResourceFulRouter(r gin.IRouter, controller controllers.ResourceController)
 	r.DELETE("/:id", controller.Destroy)
 }
 
-func SetupRouter(store *goOauth2.Store) *gin.Engine {
+func SetupRouter(store *oauth2.Store) *gin.Engine {
 	router := gin.Default()
 	router.Use(middleware.CORS())
 	authController := controllers.NewAuthController(store)

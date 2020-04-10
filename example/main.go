@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	goOauth2 "github.com/gobeam/golang-oauth"
+	oauth2 "github.com/gobeam/golang-oauth"
 	"github.com/gobeam/golang-oauth/example/common"
 	"github.com/gobeam/golang-oauth/example/core/models"
 	"github.com/gobeam/golang-oauth/example/routers"
@@ -18,8 +18,8 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
-	store := goOauth2.NewDefaultStore(
-		goOauth2.NewConfig(dbUrl),
+	store := oauth2.NewDefaultStore(
+		oauth2.NewConfig(dbUrl),
 	)
 	defer store.Close()
 	models.InitializeDb(db.Debug())

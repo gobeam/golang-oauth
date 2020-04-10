@@ -3,18 +3,18 @@ package controllers
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	goOauth2 "github.com/gobeam/golang-oauth"
+	oauth2 "github.com/gobeam/golang-oauth"
 	"github.com/gobeam/golang-oauth/example/core/models"
 	"github.com/gobeam/golang-oauth/example/shared/passhash"
 	"net/http"
 )
 
 type AuthController struct {
-	store *goOauth2.Store
+	store *oauth2.Store
 	Controller
 }
 
-func NewAuthController(store *goOauth2.Store) *AuthController {
+func NewAuthController(store *oauth2.Store) *AuthController {
 	return &AuthController{store: store}
 }
 

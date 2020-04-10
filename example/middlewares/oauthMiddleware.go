@@ -3,7 +3,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	goOauth2 "github.com/gobeam/golang-oauth"
+	oauth2 "github.com/gobeam/golang-oauth"
 	"github.com/gobeam/golang-oauth/example/core/models"
 	"github.com/gobeam/golang-oauth/example/shared/passhash"
 	"github.com/gobeam/golang-oauth/model"
@@ -98,7 +98,7 @@ func findInSlice(slice []string, val string) bool {
 
 
 // Check If access token is valid and have proper scope
-func OauthMiddleware(store *goOauth2.Store) gin.HandlerFunc {
+func OauthMiddleware(store *oauth2.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.Request.Header.Get("Authorization")
 		if authHeader == "" {
@@ -155,7 +155,7 @@ func OauthMiddleware(store *goOauth2.Store) gin.HandlerFunc {
 }
 
 // Return Access Token for valid client and user credential
-func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
+func AccessToken(store *oauth2.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var grant GrantType
 		if err := c.ShouldBindBodyWith(&grant, binding.JSON); err != nil {
