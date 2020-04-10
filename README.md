@@ -27,7 +27,7 @@ This package uses <b>EncryptOAEP</b> which encrypts the given data with <b>RSA-O
 
 ## Example
 For easy scaffold and full working REST API example made with framework [gin-gonic/gin](https://github.com/gin-gonic/gin) is included in  [example](https://github.com/gobeam/golang-oauth/tree/master/example) implementing this package.
-
+[Postman Collection](https://github.com/gobeam/golang-oauth/blob/master/example/third_party/postman_import/postman.json)
 
 ## Installation
 
