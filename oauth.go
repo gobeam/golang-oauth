@@ -199,7 +199,7 @@ func (s *Store) Create(info model.TokenInfo) (model.TokenResponse, error) {
 			UpdatedAt: time.Now(),
 		},
 		AccessTokenPayload: accessTokenPayload,
-		Scope: info.GetScope(),
+		Scope:              info.GetScope(),
 		Name:               "",
 		Revoked:            false,
 	}

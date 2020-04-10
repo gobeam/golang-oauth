@@ -13,12 +13,19 @@ type CategoryController struct {
 	Controller
 }
 
+
+func NewCategoryController() *CategoryController {
+	return &CategoryController{}
+}
+
+// Index return all categories
 func (controller CategoryController) Index(c *gin.Context) {
 	var categories models.Categories
 	categories.Get()
 	controller.SuccessResponse(c, categories)
 }
 
+// View returns category by given id
 func (controller CategoryController) View(c *gin.Context) {
 	var category models.Category
 	id := c.Param("id")
@@ -26,10 +33,12 @@ func (controller CategoryController) View(c *gin.Context) {
 	category.FindById(uint(todoId))
 	if category.ID != 0 {
 		controller.SuccessResponse(c, category)
+		return
 	}
 	controller.ErrorResponse(c, http.StatusNotFound, "not found")
 }
 
+// Store stores new category
 func (controller CategoryController) Store(c *gin.Context) {
 	var category models.Category
 	if err := c.ShouldBindBodyWith(&category, binding.JSON); err != nil {
@@ -41,6 +50,7 @@ func (controller CategoryController) Store(c *gin.Context) {
 	controller.SuccessResponse(c, category)
 }
 
+// Update updates category by id
 func (controller CategoryController) Update(c *gin.Context) {
 	var category models.Category
 	if err := c.ShouldBindBodyWith(&category, binding.JSON); err != nil {
@@ -61,6 +71,7 @@ func (controller CategoryController) Update(c *gin.Context) {
 	controller.SuccessResponse(c, orginalCategory)
 }
 
+// Destroy deletes category by id
 func (controller CategoryController) Destroy(c *gin.Context) {
 	var category models.Category
 	id := c.Param("id")
@@ -68,10 +79,9 @@ func (controller CategoryController) Destroy(c *gin.Context) {
 	category.FindById(uint(todoId))
 	if category.ID != 0 {
 		category.Delete()
+		controller.Deleted(c)
+		return
 	}
-	controller.Deleted(c)
+	controller.ErrorResponse(c, http.StatusNotFound, "not found")
 }
 
-func NewCategoryController() *CategoryController {
-	return &CategoryController{}
-}

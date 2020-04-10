@@ -7,7 +7,7 @@ require (
 	github.com/go-ini/ini v1.55.0
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/gobeam/golang-oauth v0.0.0-20200408110151-bd05e64d7ddc
+	github.com/gobeam/golang-oauth v0.0.0-20200410082514-ebe33cd15d9f
 	github.com/google/uuid v1.1.1
 	github.com/jinzhu/gorm v1.9.12
 	github.com/stvp/rollbar v0.5.1

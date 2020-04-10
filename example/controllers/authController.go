@@ -31,7 +31,7 @@ func (controller AuthController) Register(c *gin.Context) {
 }
 
 func (controller AuthController) Client(c *gin.Context) {
-	client, err := controller.store.CreateClient(1)
+	client, err := controller.store.CreateClient(1,"test app")
 	if err != nil {
 		controller.ErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return

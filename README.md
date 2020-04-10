@@ -1,7 +1,7 @@
 # Golang Oauth 2.0  with JWT custom server with example
 [![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/gobeam/goOauth2?branch=master)](https://goreportcard.com/report/github.com/gobeam/goOauth2) [![GoDoc][godoc-image]][godoc-url]
 
-If you're searching for making custom Oauth 2.0 server your search has finished here. This package helps you to develop your own custom oauth2 server. With lots of scaffolding done for you you can easily implement your own logic without any hassle.
+Build your own Golang custom Oauth 2.0 server. This package helps you to develop your own custom oauth2 server. With lots of scaffolding done for you you can easily implement your own logic without any hassle.
 <br>
 Official docs: [Here](https://godoc.org/github.com/gobeam/goOauth2)
 
@@ -9,7 +9,10 @@ Official docs: [Here](https://godoc.org/github.com/gobeam/goOauth2)
 * [Example](#example)
 * [Installation](#installation)
 * [Initialization](#initialization)
-* [Functions](#functions)
+* [Create Client](#create-client)
+* [Create Access Token](create-access-token)
+* [Revoke Access/Refresh Token manually](#revoke-accessrefresh-token-manually)
+* [Clear All Access Token Of User](#clear-all-access-token-of-user)
 * [Running the tests](#running-the-tests)
 * [Contributing](#contributing)
 * [License](#license)
@@ -23,7 +26,7 @@ This package uses <b>EncryptOAEP</b> which encrypts the given data with <b>RSA-O
 
 
 ## Example
-For easy scaffold full working REST API example made with framework [gin-gonic/gin](https://github.com/gin-gonic/gin) is included in  [example](https://github.com/gobeam/golang-oauth/tree/master/example) implementing this package.
+For easy scaffold and full working REST API example made with framework [gin-gonic/gin](https://github.com/gin-gonic/gin) is included in  [example](https://github.com/gobeam/golang-oauth/tree/master/example) implementing this package.
 
 
 ## Installation
@@ -68,98 +71,30 @@ To create client where 1 is user ID Which will return Oauth Clients struct which
 ```
 
 
-
-## Usage
-
-``` go
-package main
-
-import (
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/google/uuid"
-	"github.com/roshanr83/go-oauth2"
-	"gopkg.in/go-oauth2/mysql.v3"
-	"time"
-)
-
-func main() {
-	//register store
-	store := oauth.NewDefaultStore(
-		oauth.NewConfig("root:root@tcp(127.0.0.1:8889)/goauth?charset=utf8&parseTime=True&loc=Local"),
-	)
-	defer store.Close()
+## Create Access Token
+Visit [oauthMiddleware.go](https://github.com/gobeam/golang-oauth/blob/master/example/middlewares/oauthMiddleware.go) to get full example on how to handle creating access token and refresh token. 
 
 
+## Revoke Access/Refresh Token manually
 
-	/* to create client
-	 where 1 is user ID Which will return Oauth Clients
-	 struct which include client id and secret whic is
-	 later used to validate client credentials */
-	store.CreateClient(userId int64)
+```go
+  /*You can manually revoke access token by passing
+  userId which you can get from valid token info */
+  store.RevokeByAccessTokens(userId) 
+  
+  /*You can manually revoke refresh token by passing
+  accessTokenId which you can get from valid token info */
+  store.RevokeRefreshToken(accessTokenId)
 
-
-
-	/* create access token alongside refresh token
-	Since it will not include user authentication
-	because it can be  different for everyone you will
-	have to authenticate user and pass user id to Token struct.
-	 Here you will authenticate user and get userID
-	 you will have to provide all the field given below.
-	 ClientID must be  valid uuid. AccessExpiresIn is required
-	 to mark expiration time. In response you will get TokenResponse
-	 including accesstoken and refeshtoken. */
-	accessToken := &oauth.Token{
-		ClientID:        uuid.MustParse("17d5a915-c403-487e-b41f-92fd1074bd30"),
-		ClientSecret:    "UnCMSiJqxFg1O7cqL0MM",
-		UserID:          userID,
-		Scope:           "*",
-		AccessCreateAt:  time.Now(),
-		AccessExpiresIn: time.Second * 15,
-		RefreshCreateAt: time.Now(),
-	}
-	resp, err := store.Create(accessToken TokenInfo)
+```
 
 
+## Clear All Access Token Of User
 
-	/*To check valid accessToken, you should
-	pass accessToken and it will check if it is valid accesstoken
-	including if it is valid and non revoked. If it is valid
-	in response it will return AccessTokens data correspond to that token */
-	resp, err := store.GetByAccess(accessToken string)
-
-
-
-	/* To check valid refreshToken, you should pass
-	refreshToken and it will check if it is valid
-	refreshToken including if it is valid and non revoked
-	and if it;s related accessToken is already revoked or
-	not. If it is valid in response it will return AccessTokens
-	data correspond to that token*/
-	/* Note that refresh token after using one time
-	will be revoked and cannot be used again */
-	resp, err := store.GetByRefresh(refreshToken string)
-
-
-
-	/*You can manually revoke access token by passing
-	userId which you can get from valid token info */
-	store.RevokeByAccessTokens(userId int64)
-
-
-
-	/*You can manually revoke refresh token by passing
-	accessTokenId which you can get from valid token info */
-	store.RevokeRefreshToken(accessTokenId string)
-
-
-
-	/* you can also clear all token related to
-	user by passing TokenInfo from valid token */
-	store.ClearByAccessToken(userId int64)
-	
-}
-
-
+```go
+  /* you can also clear all token related to
+  user by passing TokenInfo from valid token */
+  store.ClearByAccessToken(userId)
 ```
 
 

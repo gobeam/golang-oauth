@@ -28,6 +28,7 @@ const (
 	InvalidUser        = "Invalid resource owner credential!"
 	InvalidGrantType   = "Invalid grant type!"
 	InvalidAccessToken = "Invalid access token!"
+	InvalidScope       = "Invalid scope!"
 	EmptyHeader        = "Authorization header is not included!"
 	InvalidHeader      = "Authorization header is invalid!"
 	RefreshToken       = "refresh_token"
@@ -47,7 +48,7 @@ type RefreshTokenCredential struct {
 	ClientID     string `json:"client_id" binding:"required"`
 	ClientSecret string `json:"client_secret" binding:"required"`
 	RefreshToken string `json:"refresh_token" binding:"required"`
-	Scope        string `json:"scope"`
+	Scope        string `json:"scope,omitempty"`
 }
 
 type AccessTokenPayload struct {
@@ -78,6 +79,25 @@ func (pc PasswordCredential) GetScope() string {
 	return pc.Scope
 }
 
+func getRequestPath(c *gin.Context) []string {
+	path := c.Request.URL.Path
+	for _, param := range c.Params {
+		path = strings.Replace(path, param.Value, ":"+param.Key, -1)
+	}
+	return strings.Split(path, "/")
+}
+
+func findInSlice(slice []string, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+
+// Check If access token is valid and have proper scope
 func OauthMiddleware(store *goOauth2.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.Request.Header.Get("Authorization")
@@ -93,9 +113,29 @@ func OauthMiddleware(store *goOauth2.Store) gin.HandlerFunc {
 		}
 
 		tokenInfo, err := store.GetByAccess(parts[1])
-		if err != nil || tokenInfo == nil {
+		if err != nil {
+			oAuthAbort(c, err.Error())
+			return
+		}
+		if tokenInfo == nil {
 			oAuthAbort(c, InvalidAccessToken)
 			return
+		}
+
+		// checking scope
+		if !strings.Contains(tokenInfo.Scope, "*") {
+			scopeArr := strings.Fields(tokenInfo.Scope)
+			requestUrlArr := getRequestPath(c)
+			validScope := false
+			for _, scope := range scopeArr {
+				if findInSlice(requestUrlArr, scope) {
+					validScope = true
+				}
+			}
+			if !validScope {
+				oAuthAbort(c, InvalidScope)
+				return
+			}
 		}
 
 		var user models.User
@@ -114,6 +154,7 @@ func OauthMiddleware(store *goOauth2.Store) gin.HandlerFunc {
 	}
 }
 
+// Return Access Token for valid client and user credential
 func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var grant GrantType
@@ -121,46 +162,47 @@ func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
 			_ = c.AbortWithError(422, err).SetType(gin.ErrorTypeBind)
 			return
 		}
-		if grant.GrantType == Password {
-			var credential PasswordCredential
-			if err := c.ShouldBindBodyWith(&credential, binding.JSON); err != nil {
-				_ = c.AbortWithError(422, err).SetType(gin.ErrorTypeBind)
-				return
-			}
+		switch grant.GrantType {
+		case Password:
+				var credential PasswordCredential
+				if err := c.ShouldBindBodyWith(&credential, binding.JSON); err != nil {
+					_ = c.AbortWithError(422, err).SetType(gin.ErrorTypeBind)
+					return
+				}
 
-			user := models.User{Email: credential.Username}
-			user.FindByEmail()
+				user := models.User{Email: credential.Username}
+				user.FindByEmail()
 
-			if user.ID < 1 {
-				oAuthAbort(c, InvalidUser)
-				return
-			}
+				if user.ID < 1 {
+					oAuthAbort(c, InvalidUser)
+					return
+				}
 
-			err := passhash.VerifyPassword(user.Password, credential.Password)
-			if err != nil {
-				oAuthAbort(c, InvalidUser)
-				return
-			}
-			_, err = uuid.Parse(credential.ClientID)
+				err := passhash.VerifyPassword(user.Password, credential.Password)
+				if err != nil {
+					oAuthAbort(c, InvalidUser)
+					return
+				}
+				_, err = uuid.Parse(credential.ClientID)
 
-			if err != nil {
-				oAuthAbort(c, InvalidClient)
-				return
-			}
+				if err != nil {
+					oAuthAbort(c, InvalidClient)
+					return
+				}
 
-			accessToken := createToken(credential, user)
+				accessToken := createToken(credential, user)
 
-			token, err := store.Create(accessToken)
-			if err != nil {
-				oAuthAbort(c, err.Error())
-				return
-			}
-			c.Set("accessToken", AccessTokenPayload{
-				AccessToken:  token.AccessToken,
-				RefreshToken: token.RefreshToken,
-				ExpiryTime:   token.ExpiredAt,
-			})
-		} else if grant.GrantType == RefreshToken {
+				token, err := store.Create(accessToken)
+				if err != nil {
+					oAuthAbort(c, err.Error())
+					return
+				}
+				c.Set("accessToken", AccessTokenPayload{
+					AccessToken:  token.AccessToken,
+					RefreshToken: token.RefreshToken,
+					ExpiryTime:   token.ExpiredAt,
+				})
+		case RefreshToken:
 			var credential RefreshTokenCredential
 			if err := c.ShouldBindBodyWith(&credential, binding.JSON); err != nil {
 				_ = c.AbortWithError(422, err).SetType(gin.ErrorTypeBind)
@@ -171,11 +213,17 @@ func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
 				oAuthAbort(c, err.Error())
 				return
 			}
+			var scope string
+			if credential.Scope != "" {
+				scope = credential.Scope
+			} else {
+				scope = refreshToken.Scope
+			}
 			accessToken := &model.Token{
 				ClientID:        uuid.MustParse(credential.ClientID),
 				ClientSecret:    credential.ClientSecret,
 				UserID:          int64(refreshToken.UserId),
-				Scope:           "*",
+				Scope:           scope,
 				AccessCreateAt:  time.Now(),
 				AccessExpiresIn: time.Second * Expiry,
 				RefreshCreateAt: time.Now(),
@@ -191,7 +239,7 @@ func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
 				RefreshToken: token.RefreshToken,
 				ExpiryTime:   token.ExpiredAt,
 			})
-		} else {
+		default:
 			oAuthAbort(c, InvalidGrantType)
 			return
 		}

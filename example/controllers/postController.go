@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gobeam/golang-oauth/example/core/models"
@@ -27,27 +29,18 @@ type PostValidate struct {
 	Title       string                `form:"title" binding:"required,max=100,min=2"`
 	Image       *multipart.FileHeader `form:"image" binding:"required"`
 	Description string                `form:"description" binding:"required,max=100,min=2"`
-	OgType      string                `form:"og_type" binding:"required,max=100,min=2"`
-	OgUrl       string                `form:"og_url" binding:"required,max=100,min=2"`
 	Body        string                `form:"body" binding:"required,min=2"`
-	CategoryId  string                `form:"category_id" binding:"required"`
+	Category    string                `form:"category" binding:"required"`
 }
 
 type PostValidateUpdate struct {
 	Title       string `form:"title" binding:"required,max=100,min=2"`
 	Description string `form:"description" binding:"required,max=100,min=2"`
-	OgType      string `form:"og_type" binding:"required,max=100,min=2"`
-	OgUrl       string `form:"og_url" binding:"required,max=100,min=2"`
 	Body        string `form:"body" binding:"required,min=2"`
-	CategoryId  string `form:"category_id" binding:"required"`
+	Category    string `form:"category" binding:"required"`
 }
 
-type BannerValidate struct {
-	Title string                `form:"title" binding:"required"`
-	Label string                `form:"label" binding:"required"`
-	File  *multipart.FileHeader `form:"file" binding:"required"`
-}
-
+// Index return all posts
 func (controller PostController) Index(c *gin.Context) {
 	posts := models.Posts{}
 	posts.Get()
@@ -55,25 +48,37 @@ func (controller PostController) Index(c *gin.Context) {
 	return
 }
 
-func (controller PostController) Destroy(c *gin.Context) {
-	post := models.Post{}
-	id := c.Param("id")
-	postId, _ := strconv.ParseInt(id, 10, 64)
-	post.FindById(postId)
-	if post.ID != 0 {
-		dirname, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-		err = os.Remove(path.Join(dirname, fmt.Sprintf("%s%s", "/public/uploads/", post.Image)))
-		if err != nil {
-			panic(err)
-		}
-		post.Delete()
+// Store stores new post
+func (controller PostController) Store(c *gin.Context) {
+	var postRequest PostValidate
+	if err := c.ShouldBind(&postRequest); err != nil {
+		_ = c.AbortWithError(http.StatusUnprocessableEntity, err).SetType(gin.ErrorTypeBind)
+		return
 	}
-	controller.Deleted(c)
+
+	imagName, err := storeIfImagePresent(c, postRequest.Image)
+	if err != nil {
+		controller.ErrorResponse(c, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+
+	var post models.Post
+	post.Image = imagName
+	post.Title = postRequest.Title
+	post.Body = postRequest.Body
+	post.Description = postRequest.Description
+	post.CreatedAt = time.Now()
+	post.Create()
+
+	var ints []uint
+	_ = json.Unmarshal([]byte(postRequest.Category), &ints)
+
+	post.AssignCategory(ints, false)
+
+	controller.SuccessResponse(c, post)
 }
 
+// View return post by id
 func (controller PostController) View(c *gin.Context) {
 	post := models.Post{}
 	id := c.Param("id")
@@ -87,7 +92,7 @@ func (controller PostController) View(c *gin.Context) {
 			for k, v := range categories {
 				catIds[k] = v.CategoryId
 			}
-			post.CategoryId = catIds
+			//post.CategoryId = catIds
 		}
 		controller.SuccessResponse(c, post)
 		return
@@ -95,6 +100,7 @@ func (controller PostController) View(c *gin.Context) {
 	controller.ErrorResponse(c, http.StatusNotFound, "not found")
 }
 
+// Update updates post by id
 func (controller PostController) Update(c *gin.Context) {
 	var postRequest PostValidateUpdate
 	if err := c.ShouldBind(&postRequest); err != nil {
@@ -111,88 +117,74 @@ func (controller PostController) Update(c *gin.Context) {
 	}
 	file, _ := c.FormFile("image")
 	if file != nil {
-		fileType := file.Header.Get("Content-Type")
-		if fileType == "" || !strings.Contains(fileType, "image") {
-			msg := "Invalid Image File!"
-			controller.ErrorResponse(c, http.StatusUnprocessableEntity, msg)
+		// delete old image
+		filePath := fmt.Sprintf("%s%s", "./public/uploads/", post.Image)
+		err := os.Remove(filePath)
+		if err != nil {
+			controller.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		filename := filepath.Base(file.Filename)
-		ext := strings.Split(filename, ".")
-		actualName := fmt.Sprintf("%s.%s", uuid.New(), ext[1])
-		filename = fmt.Sprintf("%s%s", "./public/uploads/", actualName)
-
-		if err := c.SaveUploadedFile(file, filename); err != nil {
-			c.String(http.StatusBadRequest, fmt.Sprintf("upload file err: %s", err.Error()))
+		// add new Image
+		imageName, err := storeIfImagePresent(c, file)
+		if err != nil {
+			controller.ErrorResponse(c, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		post.Image = actualName
+		post.Image = imageName
 	}
 
-	stringSlice := strings.Split(postRequest.CategoryId, ",")
-	ary := make([]uint, len(stringSlice))
-	for i := range ary {
-		u64, _ := strconv.ParseUint(stringSlice[i], 10, 32)
-		ary[i] = uint(u64)
-	}
 	post.Title = postRequest.Title
-	post.OgType = postRequest.OgType
-	post.OgUrl = postRequest.OgUrl
 	post.Body = postRequest.Body
 	post.Description = postRequest.Description
-	post.CategoryId = ary
 	post.CreatedAt = time.Now()
 	post.Update()
+
+	var ints []uint
+	_ = json.Unmarshal([]byte(postRequest.Category), &ints)
+
+	post.AssignCategory(ints, true)
+
 	controller.SuccessResponse(c, post)
 }
 
-func (controller PostController) Store(c *gin.Context) {
-	_, exists := c.Get("user")
-	if !exists {
-		msg := "Invalid Token!"
-		controller.ErrorResponse(c, http.StatusUnauthorized, msg)
+//Destroy deletes post by id
+func (controller PostController) Destroy(c *gin.Context) {
+	post := models.Post{}
+	id := c.Param("id")
+	postId, _ := strconv.ParseInt(id, 10, 64)
+	post.FindById(postId)
+	if post.ID != 0 {
+		dirname, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		err = os.Remove(path.Join(dirname, fmt.Sprintf("%s%s", "/public/uploads/", post.Image)))
+		if err != nil {
+			panic(err)
+		}
+		post.Delete()
+		controller.Deleted(c)
 		return
 	}
-	var postRequest PostValidate
-	if err := c.ShouldBind(&postRequest); err != nil {
-		_ = c.AbortWithError(http.StatusUnprocessableEntity, err).SetType(gin.ErrorTypeBind)
-		return
-	}
+	controller.ErrorResponse(c, http.StatusNotFound, "not found")
+}
 
-	fileType := postRequest.Image.Header.Get("Content-Type")
+// storeIfImagePresent stores image if present
+func storeIfImagePresent(c *gin.Context, file *multipart.FileHeader) (imgName string, err error) {
+	fileType := file.Header.Get("Content-Type")
 	if fileType == "" || !strings.Contains(fileType, "image") {
-		msg := "Invalid Image File!"
-		controller.ErrorResponse(c, http.StatusUnprocessableEntity, msg)
-		return
+		msg := "invalid image file"
+		return "", errors.New(msg)
 	}
 
-	filename := filepath.Base(postRequest.Image.Filename)
+	filename := filepath.Base(file.Filename)
 	ext := strings.Split(filename, ".")
 	actualName := fmt.Sprintf("%s.%s", uuid.New(), ext[1])
 	filename = fmt.Sprintf("%s%s", "./public/uploads/", actualName)
 
-	if err := c.SaveUploadedFile(postRequest.Image, filename); err != nil {
-		c.String(http.StatusBadRequest, fmt.Sprintf("upload file err: %s", err.Error()))
-		return
+	if err := c.SaveUploadedFile(file, filename); err != nil {
+		return "", errors.New(fmt.Sprintf("upload file err: %s", err.Error()))
 	}
-
-	stringSlice := strings.Split(postRequest.CategoryId, ",")
-	ary := make([]uint, len(stringSlice))
-	for i := range ary {
-		u64, _ := strconv.ParseUint(stringSlice[i], 10, 32)
-		ary[i] = uint(u64)
-	}
-
-	var post models.Post
-	post.Image = actualName
-	post.Title = postRequest.Title
-	post.OgType = postRequest.OgType
-	post.OgUrl = postRequest.OgUrl
-	post.Body = postRequest.Body
-	post.Description = postRequest.Description
-	post.CategoryId = ary
-	post.CreatedAt = time.Now()
-	post.Create()
-	controller.SuccessResponse(c, post)
+	return actualName, nil
 }

@@ -2,9 +2,10 @@ package models
 
 type Category struct {
 	Model
-	Name   string `json:"name" binding:"required,max=100,min=2"`
-	Status string `json:"status" binding:"required"`
-	Label  string `json:"label" binding:"required"`
+	Name   string  `json:"name" binding:"required,max=100,min=2"`
+	Status string  `json:"status" binding:"required"`
+	Label  string  `json:"label" binding:"required"`
+	Post   []*Post `gorm:"many2many:post_categories;"`
 }
 
 type Categories []Category

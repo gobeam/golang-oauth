@@ -14,9 +14,9 @@ func init() {
 }
 
 func ResourceFulRouter(r gin.IRouter, controller controllers.ResourceController) {
-	r.GET("/", controller.Index)
+	r.GET("", controller.Index)
 	r.GET("/:id", controller.View)
-	r.POST("/", controller.Store)
+	r.POST("", controller.Store)
 	r.PUT("/:id", controller.Update)
 	r.DELETE("/:id", controller.Destroy)
 }
