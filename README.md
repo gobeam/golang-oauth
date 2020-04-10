@@ -1,19 +1,73 @@
-# Golang Oauth2 with jwt OAuth 2.0
+# Golang Oauth 2.0  with JWT custom server with example
 [![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/gobeam/goOauth2?branch=master)](https://goreportcard.com/report/github.com/gobeam/goOauth2) [![GoDoc][godoc-image]][godoc-url]
 
-This project is modified version of [go-oauth2/oauth2](https://github.com/go-oauth2/oauth2). Since that didn't meet my requirement so I modified the code so I can implement oauth2 alongside with JWT.
-<br>
-This package uses <b>EncryptOAEP</b> which encrypts the given data with <b>RSA-OAEP</b> to encrypt token data. Two separate file <b>private.pem</b> and <b>public.pem</b> file will be created on your root folder which includes respective private and public RSA keys which is used for encryption.
-<br>
-This package only handles Resource Owner Password Credentials type.
+If you're searching for making custom Oauth 2.0 server your search has finished here. This package helps you to develop your own custom oauth2 server. With lots of scaffolding done for you you can easily implement your own logic without any hassle.
 <br>
 Official docs: [Here](https://godoc.org/github.com/gobeam/goOauth2)
 
-## Install
+* [Why?](#why)
+* [Example](#example)
+* [Installation](#installation)
+* [Initialization](#initialization)
+* [Functions](#functions)
+* [Running the tests](#running-the-tests)
+* [Contributing](#contributing)
+* [License](#license)
+
+
+## Why
+I was trying to make my own modified version of OAUTH2 alongside with JWT server and didn't find any good package so, I made one.  This project is modified version of [go-oauth2/oauth2](https://github.com/go-oauth2/oauth2). since this project didn't meet my requirement .
+<br>
+This package uses <b>EncryptOAEP</b> which encrypts the given data with <b>RSA-OAEP</b> to encrypt token data. Two separate file <b>private.pem</b> and <b>public.pem</b> file will be created on your root folder which includes respective private and public RSA keys which is used for encryption.
+<br>
+
+
+## Example
+For easy scaffold full working REST API example made with framework [gin-gonic/gin](https://github.com/gin-gonic/gin) is included in  [example](https://github.com/gobeam/golang-oauth/tree/master/example) implementing this package.
+
+
+## Installation
 
 ``` bash
-$ go get -u -v github.com/roshanr83/go-oauth2
+$ go get -u -v github.com/gobeam/golang-oauth
 ```
+
+
+## Initialization
+
+Easy to initialize just by:
+
+``` go
+package main
+
+import (
+	_ "github.com/go-sql-driver/mysql"
+	oauth "github.com/roshanr83/go-oauth2"
+)
+
+func main() {
+	//register store
+	store := oauth.NewDefaultStore(
+		oauth.NewConfig("root:root@tcp(127.0.0.1:8889)/goauth?charset=utf8&parseTime=True&loc=Local"),
+	)
+	defer store.Close()
+}
+
+```
+
+
+## Create Client
+
+To create client where 1 is user ID Which will return Oauth Clients struct which include client id and secret which is later used to validate client credentials
+	 
+```go
+ var userId = 1 // to know who created can be 0
+ var clientName = "my app" // app name can be empty string
+ store.CreateClient(userId, clientName)
+
+```
+
+
 
 ## Usage
 
@@ -108,31 +162,26 @@ func main() {
 
 ```
 
+
 ## Running the tests
+
 Database config is used as "root:root@tcp(127.0.0.1:3306)/goauth?charset=utf8&parseTime=True&loc=Local" in const.go file, You may have to change that configuration according to your system config for successful test.
 
 ``` bash
 $ go test
 ```
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 Please make sure to update tests as appropriate.
 
 
-## Acknowledgments
-<ol>
-<li> https://github.com/go-oauth2/oauth2 </li>
-</ol>
+## License
 
+Released under the MIT License - see `LICENSE.txt` for details.
 
-
-## MIT License
-
-```
-Copyright (c) 2019
-```
 
 [Build-Status-Url]: https://travis-ci.org/gobeam/goOauth2
 [Build-Status-Image]: https://travis-ci.org/gobeam/goOauth2.svg?branch=master

@@ -7,5 +7,4 @@ type Clients struct {
 	Name     string `db:"name"`
 	Secret   string `db:"secret"`
 	Revoked  bool   `db:"revoked"`
-	Redirect string `db:"redirect"`
 }

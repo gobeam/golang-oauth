@@ -7,6 +7,7 @@ import (
 	"github.com/gobeam/golang-oauth/example/core/models"
 	"github.com/gobeam/golang-oauth/example/shared/passhash"
 	"github.com/gobeam/golang-oauth/model"
+
 	"github.com/google/uuid"
 	"net/http"
 	"strings"
@@ -37,7 +38,7 @@ const (
 type PasswordCredential struct {
 	ClientID     string `json:"client_id" binding:"required"`
 	ClientSecret string `json:"client_secret" binding:"required"`
-	Scope        string `json:"scope" binding:"required"`
+	Scope        string `json:"scope,omitempty" binding:"required"`
 	Username     string `json:"username" binding:"required"`
 	Password     string `json:"Password" binding:"required"`
 }
@@ -180,15 +181,15 @@ func AccessToken(store *goOauth2.Store) gin.HandlerFunc {
 				RefreshCreateAt: time.Now(),
 			}
 
-			ctoken, err := store.Create(accessToken)
+			token, err := store.Create(accessToken)
 			if err != nil {
 				oAuthAbort(c, err.Error())
 				return
 			}
 			c.Set("accessToken", AccessTokenPayload{
-				AccessToken:  ctoken.AccessToken,
-				RefreshToken: ctoken.RefreshToken,
-				ExpiryTime:   ctoken.ExpiredAt,
+				AccessToken:  token.AccessToken,
+				RefreshToken: token.RefreshToken,
+				ExpiryTime:   token.ExpiredAt,
 			})
 		} else {
 			oAuthAbort(c, InvalidGrantType)
@@ -203,7 +204,7 @@ func createToken(cred PasswordCredential, user models.User) (accessToken *model.
 		ClientID:        uuid.MustParse(cred.ClientID),
 		ClientSecret:    cred.ClientSecret,
 		UserID:          int64(user.ID),
-		Scope:           "*",
+		Scope:           cred.Scope,
 		AccessCreateAt:  time.Now(),
 		AccessExpiresIn: time.Second * Expiry,
 		RefreshCreateAt: time.Now(),

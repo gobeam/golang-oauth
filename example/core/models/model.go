@@ -13,7 +13,7 @@ type Model struct {
 
 var DB *gorm.DB
 
-func InitializeDb(db *gorm.DB)  {
+func InitializeDb(db *gorm.DB) {
 	DB = db
 	DB.AutoMigrate(&User{}, &Category{})
 }

@@ -134,12 +134,13 @@ func (s *Store) errorf(format string, args ...interface{}) {
 
 // CreateClient creates new client,
 // userId user's id who created the client
-func (s *Store) CreateClient(userId int64) (model.Clients, error) {
-	var client model.Clients
+func (s *Store) CreateClient(userId int64, name string) (model.Clients, error) {
+	client := model.Clients{}
 	if userId == 0 {
 		return client, errors.New(util.EmptyUserID)
 	}
 	client.ID = uuid.New()
+	client.Name = name
 	client.Secret = util.RandomKey(20)
 	client.UserId = userId
 	client.CreatedAt = time.Now()
@@ -192,14 +193,15 @@ func (s *Store) Create(info model.TokenInfo) (model.TokenResponse, error) {
 	accessTokenPayload.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 	tokenResp.ExpiredAt = info.GetAccessCreateAt().Add(info.GetAccessExpiresIn()).Unix()
 	oauthAccess := &model.AccessTokens{
-		model.Model{
+		Model: model.Model{
 			ID:        accessId,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
-		accessTokenPayload,
-		"",
-		false,
+		AccessTokenPayload: accessTokenPayload,
+		Scope: info.GetScope(),
+		Name:               "",
+		Revoked:            false,
 	}
 	accessByte := new(bytes.Buffer)
 	_ = json.NewEncoder(accessByte).Encode(accessTokenPayload)
@@ -214,13 +216,13 @@ func (s *Store) Create(info model.TokenInfo) (model.TokenResponse, error) {
 	refreshTokenPayload := model.RefreshTokenPayload{}
 	refreshTokenPayload.AccessTokenId = accessId
 	refreshToken := &model.RefreshTokens{
-		model.Model{
+		Model: model.Model{
 			ID:        uuid.New(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
-		refreshTokenPayload,
-		false,
+		RefreshTokenPayload: refreshTokenPayload,
+		Revoked:             false,
 	}
 
 	refreshTokenByte := new(bytes.Buffer)
@@ -293,9 +295,9 @@ func (s *Store) GetByRefresh(refresh string) (*model.AccessTokens, error) {
 	}
 
 	//check if associated access token is revoked or not
-	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE id=? LIMIT 1", s.accessTable)
+	checkAccessTokenQuery := fmt.Sprintf("SELECT * FROM %s WHERE id=? LIMIT 1", s.accessTable)
 	var accessTokenData model.AccessTokens
-	err = s.db.SelectOne(&accessTokenData, checkAccessTokenquery, accessToken.AccessTokenId)
+	err = s.db.SelectOne(&accessTokenData, checkAccessTokenQuery, accessToken.AccessTokenId)
 	if err != nil {
 		return nil, errors.New(util.InvalidRefreshToken)
 	}
@@ -323,9 +325,9 @@ func (s *Store) GetByRefresh(refresh string) (*model.AccessTokens, error) {
 // ClearByAccessToken clears all token related to user,
 // userId id of user whose access token needs to be cleared
 func (s *Store) ClearByAccessToken(userId int64) error {
-	checkAccessTokenquery := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? ", s.accessTable)
+	checkAccessTokenQuery := fmt.Sprintf("SELECT * FROM %s WHERE user_id=? ", s.accessTable)
 	var accessTokenData []model.AccessTokens
-	_, err := s.db.Select(&accessTokenData, checkAccessTokenquery, userId)
+	_, err := s.db.Select(&accessTokenData, checkAccessTokenQuery, userId)
 	if err != nil {
 		return err
 	}
@@ -371,12 +373,12 @@ func (s *Store) RevokeByAccessTokens(userId int64) error {
 // decryptAccessToken decrypts given access token
 func decryptAccessToken(token string) (*model.AccessTokenPayload, error) {
 	var tm model.AccessTokenPayload
-	privKey, err := ioutil.ReadFile(util.PrivatePem)
+	pKey, err := ioutil.ReadFile(util.PrivatePem)
 	if err != nil {
 		return &tm, err
 	}
-	prikey := util.BytesToPrivateKey(privKey)
-	dec, err := util.DecryptWithPrivateKey(token, prikey)
+	privKey := util.BytesToPrivateKey(pKey)
+	dec, err := util.DecryptWithPrivateKey(token, privKey)
 	if err != nil {
 		return &tm, err
 	}
@@ -390,16 +392,16 @@ func decryptAccessToken(token string) (*model.AccessTokenPayload, error) {
 // decryptRefreshToken decrypts given refresh token
 func decryptRefreshToken(token string) (*model.RefreshTokenPayload, error) {
 	var tm model.RefreshTokenPayload
-	privKey, err := ioutil.ReadFile(util.PrivatePem)
+	pKey, err := ioutil.ReadFile(util.PrivatePem)
 	if err != nil {
 		return &tm, err
 	}
-	prikey := util.BytesToPrivateKey(privKey)
-	decypher, err := util.DecryptWithPrivateKey(token, prikey)
+	privKey := util.BytesToPrivateKey(pKey)
+	decipher, err := util.DecryptWithPrivateKey(token, privKey)
 	if err != nil {
 		return &tm, err
 	}
-	_ = jsoniter.Unmarshal([]byte(decypher), &tm)
+	_ = jsoniter.Unmarshal([]byte(decipher), &tm)
 	if tm.AccessTokenId == uuid.Nil {
 		return &tm, errors.New(util.InvalidRefreshToken)
 	}

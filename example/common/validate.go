@@ -1,11 +1,10 @@
 package common
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin/binding"
-	"github.com/jinzhu/gorm"
+	"github.com/go-playground/validator/v10"
 	"github.com/gobeam/golang-oauth/example/core/models"
-	"gopkg.in/go-playground/validator.v8"
+	"github.com/jinzhu/gorm"
 	"reflect"
 )
 
@@ -18,12 +17,21 @@ func NewValidatorRegister(db *gorm.DB) ValidatorRegister {
 }
 
 func (valReg ValidatorRegister) RegisterValidator() {
+
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		err := v.RegisterValidation("uniqueEmail", valReg.uniqueEmail)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+		v.RegisterValidation("uniqueEmail", uniqueEmail)
 	}
+}
+
+var uniqueEmail validator.Func = func(fl validator.FieldLevel) bool {
+	user := models.User{}
+	models.DB.Where(&models.User{
+		Email: fl.Field().String(),
+	}).First(&user)
+	if user.ID == 0 {
+		return true
+	}
+	return false
 }
 
 func (valReg ValidatorRegister) uniqueEmail(

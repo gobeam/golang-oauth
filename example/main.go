@@ -7,11 +7,11 @@ import (
 	"github.com/gobeam/golang-oauth/example/common"
 	"github.com/gobeam/golang-oauth/example/core/models"
 	"github.com/gobeam/golang-oauth/example/routers"
+	"github.com/jinzhu/gorm"
 	"log"
 )
 
 func main() {
-
 	dbUrl := common.GetConfig("mysql", "url").String()
 	db, err := gorm.Open("mysql", dbUrl)
 	if err != nil {
@@ -36,4 +36,3 @@ func main() {
 		log.Fatalf("Server failed to start %v ", serverError)
 	}
 }
-

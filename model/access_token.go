@@ -7,6 +7,7 @@ type AccessTokens struct {
 	Model
 	AccessTokenPayload
 	Name    string `db:"name"`
+	Scope   string `db:"scope"`
 	Revoked bool   `db:"revoked"`
 }
 

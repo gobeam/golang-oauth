@@ -16,7 +16,7 @@ type CategoryController struct {
 func (controller CategoryController) Index(c *gin.Context) {
 	var categories models.Categories
 	categories.Get()
-	SuccessResponse(c, categories)
+	controller.SuccessResponse(c, categories)
 }
 
 func (controller CategoryController) View(c *gin.Context) {
@@ -25,9 +25,9 @@ func (controller CategoryController) View(c *gin.Context) {
 	todoId, _ := strconv.ParseInt(id, 10, 64)
 	category.FindById(uint(todoId))
 	if category.ID != 0 {
-		SuccessResponse(c, category)
+		controller.SuccessResponse(c, category)
 	}
-	ErrorResponse(c, http.StatusNotFound, "not found")
+	controller.ErrorResponse(c, http.StatusNotFound, "not found")
 }
 
 func (controller CategoryController) Store(c *gin.Context) {
@@ -38,7 +38,7 @@ func (controller CategoryController) Store(c *gin.Context) {
 	}
 	category.CreatedAt = time.Now()
 	category.Create()
-	SuccessResponse(c, category)
+	controller.SuccessResponse(c, category)
 }
 
 func (controller CategoryController) Update(c *gin.Context) {
@@ -58,7 +58,7 @@ func (controller CategoryController) Update(c *gin.Context) {
 		orginalCategory.UpdatedAt = time.Now()
 		orginalCategory.Update()
 	}
-	SuccessResponse(c, orginalCategory)
+	controller.SuccessResponse(c, orginalCategory)
 }
 
 func (controller CategoryController) Destroy(c *gin.Context) {
@@ -69,7 +69,7 @@ func (controller CategoryController) Destroy(c *gin.Context) {
 	if category.ID != 0 {
 		category.Delete()
 	}
-	Deleted(c)
+	controller.Deleted(c)
 }
 
 func NewCategoryController() *CategoryController {

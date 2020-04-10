@@ -24,7 +24,7 @@ func init() {
 }
 
 func TestCreateClient(t *testing.T) {
-	client, err := dbStore.CreateClient(1)
+	client, err := dbStore.CreateClient(1,"test app")
 	if err != nil {
 		t.Error(err.Error())
 	}

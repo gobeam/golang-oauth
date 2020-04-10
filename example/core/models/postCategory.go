@@ -6,12 +6,12 @@ type PostCategory struct {
 	CategoryId uint `json:"category_id" binding:"required"`
 }
 
-type PostCategorys []PostCategory
+type PostCategories []PostCategory
 
 func (p *PostCategory) Create() {
 	DB.Create(&p)
 }
 
-func (p *PostCategorys) GetByPostId(id int64) {
+func (p *PostCategories) GetByPostId(id int64) {
 	DB.Where("post_id = ?", id).Find(&p)
 }

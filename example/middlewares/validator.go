@@ -4,19 +4,36 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/stvp/rollbar"
-	"gopkg.in/go-playground/validator.v8"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
 
-var (
-	ErrorInternalError = errors.New("whoops something went wrong")
+// const list
+const (
+	ErrorTypeErrorValidation string = "validator.ValidationErrors"
 )
 
+// var list
+var (
+	ErrorInternalError = errors.New("whoops something went wrong")
+	matchFirstCap      = regexp.MustCompile("(.)([A-Z][a-z]+)")
+	matchAllCap        = regexp.MustCompile("([a-z0-9])([A-Z])")
+)
+
+// ToSnakeCase method change string to snakecase
+func toSnakeCase(str string) string {
+	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
+}
+
+// UcFirst method is for uppercase first letter of word
 func UcFirst(str string) string {
 	for i, v := range str {
 		return string(unicode.ToUpper(v)) + str[i+1:]
@@ -24,10 +41,12 @@ func UcFirst(str string) string {
 	return ""
 }
 
+// LcFirst method is to change lowercase word
 func LcFirst(str string) string {
 	return strings.ToLower(str)
 }
 
+// Split method is to split camelcase letter
 func Split(src string) string {
 	// don't split invalid utf8
 	if !utf8.ValidString(src) {
@@ -81,52 +100,60 @@ func Split(src string) string {
 	return justString
 }
 
-func ValidationErrorToText(e *validator.FieldError) string {
-	word := Split(e.Field)
+// ExtraValidation model
+type ExtraValidation struct {
+	Tag     string
+	Message string
+}
 
-	switch e.Tag {
-	case "required":
-		return fmt.Sprintf("%s is required", word)
-	case "max":
-		return fmt.Sprintf("%s cannot be longer than %s characters", word, e.Param)
-	case "min":
-		return fmt.Sprintf("%s must be minimum %s characters", word, e.Param)
-	case "email":
-		return fmt.Sprintf("Invalid email format")
-	case "len":
-		return fmt.Sprintf("%s must be %s characters long", word, e.Param)
-	case "uniqueEmail":
-		return fmt.Sprintf("%s already taken", word)
-	case "eqfield":
-		return fmt.Sprintf("%s does not match", word)
-	case "unique":
-		return fmt.Sprintf("%s already taken", word)
-	case "password":
-		return fmt.Sprintf("%s must be at least one number, one upper case and one special character", word)
-	case "nonumstart":
-		return fmt.Sprintf("%s cannot start with number", word)
-	case "numeric":
-		return fmt.Sprintf("%s should only contain numeric characters", word)
-	case "phone":
-		return fmt.Sprintf("%s should only contain numeric characters", word)
-	case "eth_address":
-		return fmt.Sprintf("%s must be valid ethereum address", word)
-	case "string":
-		return fmt.Sprintf("%s must be string", word)
+// ValidationObject initialize default Validation object
+var ValidationObject = []ExtraValidation{
+	{Tag: "required", Message: "%s is required!"},
+	{Tag: "max", Message: "%s cannot be more than %s!"},
+	{Tag: "min", Message: "%s must be minimum %s!"},
+	{Tag: "email", Message: "Invalid email format!"},
+	{Tag: "len", Message: "%s must be %s characters long!"},
+}
+
+// MakeExtraValidation method is for registering new validator
+func MakeExtraValidation(v []ExtraValidation) {
+	for _, vObj := range v {
+		ValidationObject = append(ValidationObject, vObj)
 	}
-	return fmt.Sprintf("%s is not valid", word)
+
 }
 
-var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+// checkOccurance checks if param is involved in valdation message
+func checkOccurance(msg string, word string, param string) (ans string) {
+	reg := regexp.MustCompile("%s")
 
-func ToSnakeCase(str string) string {
-	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToLower(snake)
+	matches := reg.FindAllStringIndex(msg, -1)
+	if len(matches) == 2 {
+		ans = fmt.Sprintf(msg, word, param)
+	} else {
+		ans = fmt.Sprintf(msg, word)
+	}
+	return
 }
 
-// This method collects all errors and submits them to Rollbar
+// ValidationErrorToText method changes FieldError to string
+func ValidationErrorToText(e validator.FieldError) string {
+	word := Split(e.Field())
+	var result string
+	for _, validate := range ValidationObject {
+		if e.Tag() == validate.Tag {
+			result = checkOccurance(validate.Message, word, e.Param())
+		}
+	}
+	if result == "" {
+		result = fmt.Sprintf("%s is not valid", word)
+	}
+
+	return result
+
+}
+
+// Errors method collects all errors and submits them to Rollbar
 func Errors() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
@@ -137,27 +164,30 @@ func Errors() gin.HandlerFunc {
 				// Find out what type of error it is
 				switch e.Type {
 				case gin.ErrorTypePublic:
-					// Only output public errors if nothing has been written yet
-					//if !c.Writer.Written() {
-					//	c.JSON(c.Writer.Status(), gin.H{"Error": e.Error()})
-					//}
+					if !c.Writer.Written() {
+						c.JSON(c.Writer.Status(), gin.H{"Error": e.Error()})
+					}
 				case gin.ErrorTypeBind:
+					errorType := reflect.TypeOf(e.Err).String()
+					switch errorType {
+					case ErrorTypeErrorValidation:
+						errs := e.Err.(validator.ValidationErrors)
+						list := make(map[string]string)
 
-					errs := e.Err.(validator.ValidationErrors)
-					list := make(map[string]string)
-
-					for _, err := range errs {
-						list[strings.ToLower(ToSnakeCase(err.Field))] = ValidationErrorToText(err)
+						for _, err := range errs {
+							list[strings.ToLower(toSnakeCase(err.Field()))] = ValidationErrorToText(err)
+						}
+						status := http.StatusUnprocessableEntity
+						c.JSON(status, gin.H{"error": list})
+						c.Abort()
+						return
+					default:
+						status := http.StatusUnprocessableEntity
+						c.JSON(status, gin.H{"error": e.Err.Error()})
+						c.Abort()
+						return
 					}
 
-					// Make sure we maintain the preset response status
-					status := http.StatusUnprocessableEntity
-					//if c.Writer.Status() != http.StatusOK {
-					//	status = c.Writer.Status()
-					//}
-					c.JSON(status, gin.H{"error": list})
-					c.Abort()
-					return
 				default:
 					// Log all other errors
 					rollbar.RequestError(rollbar.ERR, c.Request, e.Err)

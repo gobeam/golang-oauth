@@ -1,12 +1,9 @@
 package controllers
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/gobeam/golang-oauth/example/common"
 	"github.com/gobeam/golang-oauth/example/core/models"
-	"github.com/gobeam/golang-oauth/example/middlewares"
 	"github.com/google/uuid"
 	"mime/multipart"
 	"net/http"
@@ -26,12 +23,6 @@ func NewPostController() *PostController {
 	return &PostController{}
 }
 
-var (
-	routingKey       = "app.service.post.evaluate"
-	eventType        = "topic"
-	createImageRoute = "app.service.image.create"
-)
-
 type PostValidate struct {
 	Title       string                `form:"title" binding:"required,max=100,min=2"`
 	Image       *multipart.FileHeader `form:"image" binding:"required"`
@@ -39,16 +30,16 @@ type PostValidate struct {
 	OgType      string                `form:"og_type" binding:"required,max=100,min=2"`
 	OgUrl       string                `form:"og_url" binding:"required,max=100,min=2"`
 	Body        string                `form:"body" binding:"required,min=2"`
-	CategoryId  string                 `form:"category_id" binding:"required"`
+	CategoryId  string                `form:"category_id" binding:"required"`
 }
 
 type PostValidateUpdate struct {
-	Title       string                `form:"title" binding:"required,max=100,min=2"`
-	Description string                `form:"description" binding:"required,max=100,min=2"`
-	OgType      string                `form:"og_type" binding:"required,max=100,min=2"`
-	OgUrl       string                `form:"og_url" binding:"required,max=100,min=2"`
-	Body        string                `form:"body" binding:"required,min=2"`
-	CategoryId  string                 `form:"category_id" binding:"required"`
+	Title       string `form:"title" binding:"required,max=100,min=2"`
+	Description string `form:"description" binding:"required,max=100,min=2"`
+	OgType      string `form:"og_type" binding:"required,max=100,min=2"`
+	OgUrl       string `form:"og_url" binding:"required,max=100,min=2"`
+	Body        string `form:"body" binding:"required,min=2"`
+	CategoryId  string `form:"category_id" binding:"required"`
 }
 
 type BannerValidate struct {
@@ -57,16 +48,15 @@ type BannerValidate struct {
 	File  *multipart.FileHeader `form:"file" binding:"required"`
 }
 
-
 func (controller PostController) Index(c *gin.Context) {
-	var posts models.Posts
+	posts := models.Posts{}
 	posts.Get()
-	SuccessResponse(c, posts)
+	controller.SuccessResponse(c, posts)
 	return
 }
 
 func (controller PostController) Destroy(c *gin.Context) {
-	var post models.Post
+	post := models.Post{}
 	id := c.Param("id")
 	postId, _ := strconv.ParseInt(id, 10, 64)
 	post.FindById(postId)
@@ -75,35 +65,34 @@ func (controller PostController) Destroy(c *gin.Context) {
 		if err != nil {
 			panic(err)
 		}
-		err = os.Remove(path.Join(dirname, fmt.Sprintf("%s%s","/public/uploads/", post.Image)))
+		err = os.Remove(path.Join(dirname, fmt.Sprintf("%s%s", "/public/uploads/", post.Image)))
 		if err != nil {
 			panic(err)
 		}
 		post.Delete()
 	}
-	Deleted(c)
+	controller.Deleted(c)
 }
 
-
 func (controller PostController) View(c *gin.Context) {
-	var post models.Post
+	post := models.Post{}
 	id := c.Param("id")
 	postId, _ := strconv.ParseInt(id, 10, 64)
 	post.FindById(postId)
 	if post.ID != 0 {
-		var categorys models.PostCategorys
-		categorys.GetByPostId(postId)
-		if categorys != nil {
-			catIds := make([]uint,len(categorys))
-			for k,v := range categorys {
+		categories := models.PostCategories{}
+		categories.GetByPostId(postId)
+		if len(categories) > 0 {
+			catIds := make([]uint, len(categories))
+			for k, v := range categories {
 				catIds[k] = v.CategoryId
 			}
 			post.CategoryId = catIds
 		}
-		SuccessResponse(c, post)
+		controller.SuccessResponse(c, post)
 		return
 	}
-	ErrorResponse(c, http.StatusNotFound, "not found")
+	controller.ErrorResponse(c, http.StatusNotFound, "not found")
 }
 
 func (controller PostController) Update(c *gin.Context) {
@@ -117,7 +106,7 @@ func (controller PostController) Update(c *gin.Context) {
 	postId, _ := strconv.ParseInt(id, 10, 64)
 	post.FindById(postId)
 	if post.ID < 1 {
-		ErrorResponse(c, http.StatusNotFound, "post not found")
+		controller.ErrorResponse(c, http.StatusNotFound, "post not found")
 		return
 	}
 	file, _ := c.FormFile("image")
@@ -125,13 +114,13 @@ func (controller PostController) Update(c *gin.Context) {
 		fileType := file.Header.Get("Content-Type")
 		if fileType == "" || !strings.Contains(fileType, "image") {
 			msg := "Invalid Image File!"
-			ErrorResponse(c, http.StatusUnprocessableEntity, msg)
+			controller.ErrorResponse(c, http.StatusUnprocessableEntity, msg)
 			return
 		}
 
 		filename := filepath.Base(file.Filename)
-		ext := strings.Split(filename,".")
-		actualName := fmt.Sprintf("%s.%s", uuid.New(),ext[1])
+		ext := strings.Split(filename, ".")
+		actualName := fmt.Sprintf("%s.%s", uuid.New(), ext[1])
 		filename = fmt.Sprintf("%s%s", "./public/uploads/", actualName)
 
 		if err := c.SaveUploadedFile(file, filename); err != nil {
@@ -155,14 +144,14 @@ func (controller PostController) Update(c *gin.Context) {
 	post.CategoryId = ary
 	post.CreatedAt = time.Now()
 	post.Update()
-	SuccessResponse(c, post)
+	controller.SuccessResponse(c, post)
 }
 
 func (controller PostController) Store(c *gin.Context) {
-	profile, exists := c.Get("user")
+	_, exists := c.Get("user")
 	if !exists {
 		msg := "Invalid Token!"
-		ErrorResponse(c, http.StatusUnauthorized, msg)
+		controller.ErrorResponse(c, http.StatusUnauthorized, msg)
 		return
 	}
 	var postRequest PostValidate
@@ -174,13 +163,13 @@ func (controller PostController) Store(c *gin.Context) {
 	fileType := postRequest.Image.Header.Get("Content-Type")
 	if fileType == "" || !strings.Contains(fileType, "image") {
 		msg := "Invalid Image File!"
-		ErrorResponse(c, http.StatusUnprocessableEntity, msg)
+		controller.ErrorResponse(c, http.StatusUnprocessableEntity, msg)
 		return
 	}
 
 	filename := filepath.Base(postRequest.Image.Filename)
-	ext := strings.Split(filename,".")
-	actualName := fmt.Sprintf("%s.%s", uuid.New(),ext[1])
+	ext := strings.Split(filename, ".")
+	actualName := fmt.Sprintf("%s.%s", uuid.New(), ext[1])
 	filename = fmt.Sprintf("%s%s", "./public/uploads/", actualName)
 
 	if err := c.SaveUploadedFile(postRequest.Image, filename); err != nil {
@@ -205,5 +194,5 @@ func (controller PostController) Store(c *gin.Context) {
 	post.CategoryId = ary
 	post.CreatedAt = time.Now()
 	post.Create()
-	SuccessResponse(c, post)
+	controller.SuccessResponse(c, post)
 }

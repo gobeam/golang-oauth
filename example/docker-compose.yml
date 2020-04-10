@@ -1,15 +1,15 @@
 version: "2"
 
 services:
-#  frontend_service:
-#    build:
-#      context: .
-#      dockerfile: frontend/Dockerfile
-#    container_name: frontend_service.dev
-#    ports:
-#      - "3000:3000"
-#    volumes:
-#      - .:/frontend_service
+  #  frontend_service:
+  #    build:
+  #      context: .
+  #      dockerfile: frontend/Dockerfile
+  #    container_name: frontend_service.dev
+  #    ports:
+  #      - "3000:3000"
+  #    volumes:
+  #      - .:/frontend_service
 
   auth_service:
     build:
@@ -69,25 +69,25 @@ services:
       - authServiceDb
       - rabbitmqNet
 
-#  db_post_service:
-#    image: mariadb:latest
-#    container_name: db_post_service.dev
-#    volumes:
-#      #- ../../_local_mysql_data:/var/lib/mysql
-#      #- ./shopee.sql:/tmp/shopee.sql
-#      #- ./import.sh:/tmp/import.sh
-#      - ./mysql_init:/docker-entrypoint-initdb.d
-#    networks:
-#      - postServiceNetwork
-#    restart: on-failure
-#    environment:
-#      - MYSQL_ROOT_PASSWORD=root
-#      - MYSQL_DATABASE=postdb
-#      - MYSQL_USER=root
-#      - MYSQL_PASSWORD=root
-#    ports:
-#      - "33062:3306" #It means the application running inside the container is exposed at port 3306
-#    hostname: db_post_service.dev
+  #  db_post_service:
+  #    image: mariadb:latest
+  #    container_name: db_post_service.dev
+  #    volumes:
+  #      #- ../../_local_mysql_data:/var/lib/mysql
+  #      #- ./shopee.sql:/tmp/shopee.sql
+  #      #- ./import.sh:/tmp/import.sh
+  #      - ./mysql_init:/docker-entrypoint-initdb.d
+  #    networks:
+  #      - postServiceNetwork
+  #    restart: on-failure
+  #    environment:
+  #      - MYSQL_ROOT_PASSWORD=root
+  #      - MYSQL_DATABASE=postdb
+  #      - MYSQL_USER=root
+  #      - MYSQL_PASSWORD=root
+  #    ports:
+  #      - "33062:3306" #It means the application running inside the container is exposed at port 3306
+  #    hostname: db_post_service.dev
 
   rabbitmq:
     build:
