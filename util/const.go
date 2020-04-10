@@ -18,5 +18,5 @@ const (
 	Label               = "OAEP Encrypted"
 	PublicKey           = "PUBLIC KEY"
 	PrivateKey          = "PRIVATE KEY"
-	DbConfig            = "root:root@tcp(127.0.0.1:3306)/goauth?charset=utf8&parseTime=True&loc=Local"
+	DbConfig            = "root:@tcp(127.0.0.1:3306)/goauth?charset=utf8&parseTime=True&loc=Local"
 )
