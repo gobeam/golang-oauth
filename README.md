@@ -1,9 +1,9 @@
 # Golang Oauth 2.0  with JWT custom server with example
-[![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/gobeam/goOauth2?branch=master)](https://goreportcard.com/report/github.com/gobeam/goOauth2) [![GoDoc][godoc-image]][godoc-url]
+[![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/gobeam/golang-oauth?branch=master)](https://goreportcard.com/report/github.com/gobeam/golang-oauth) [![GoDoc][godoc-image]][godoc-url]
 
 Build your own Golang custom Oauth 2.0 server. This package helps you to develop your own custom oauth2 server. With lots of scaffolding done for you you can easily implement your own logic without any hassle.
 <br>
-Official docs: [Here](https://godoc.org/github.com/gobeam/goOauth2)
+Official docs: [Here](https://godoc.org/github.com/gobeam/golang-oauth)
 
 * [Why?](#why)
 * [Example](#example)
@@ -120,5 +120,5 @@ Released under the MIT License - see `LICENSE.txt` for details.
 
 [Build-Status-Url]: https://travis-ci.org/gobeam/goOauth2
 [Build-Status-Image]: https://travis-ci.org/gobeam/goOauth2.svg?branch=master
-[godoc-url]: https://pkg.go.dev/github.com/gobeam/goOauth2?tab=doc
-[godoc-image]: https://godoc.org/github.com/gobeam/goOauth2?status.svg
+[godoc-url]: https://pkg.go.dev/github.com/gobeam/golang-oauth?tab=doc
+[godoc-image]: https://godoc.org/github.com/gobeam/golang-oauth?status.svg
