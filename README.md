@@ -118,7 +118,7 @@ Please make sure to update tests as appropriate.
 Released under the MIT License - see `LICENSE.txt` for details.
 
 
-[Build-Status-Url]: https://travis-ci.org/gobeam/goOauth2
-[Build-Status-Image]: https://travis-ci.org/gobeam/goOauth2.svg?branch=master
+[Build-Status-Url]: https://travis-ci.org/gobeam/golang-oauth
+[Build-Status-Image]: https://travis-ci.org/gobeam/golang-oauth.svg?branch=master
 [godoc-url]: https://pkg.go.dev/github.com/gobeam/golang-oauth?tab=doc
 [godoc-image]: https://godoc.org/github.com/gobeam/golang-oauth?status.svg
