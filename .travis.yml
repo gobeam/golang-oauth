@@ -7,10 +7,8 @@ services:
   - mysql
 before_install:
   - mysql -e 'CREATE DATABASE goauth;'
-  - go get github.com/mattn/goveralls
 install:
   - eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=master bash)"
 script:
   - go build
   - go test
-  - $GOPATH/bin/goveralls -service=travis-ci
