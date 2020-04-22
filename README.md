@@ -1,5 +1,6 @@
 # Golang Oauth 2.0  with JWT custom server with example
 [![Build][Build-Status-Image]][Build-Status-Url] [![Go Report Card](https://goreportcard.com/badge/github.com/gobeam/golang-oauth?branch=master)](https://goreportcard.com/report/github.com/gobeam/golang-oauth) [![GoDoc][godoc-image]][godoc-url]
+[![Coverage](http://gocover.io/_badge/github.com/gobeam/golang-oauth?0)](http://gocover.io/github.com/gobeam/golang-oauth)
 
 Build your own Golang custom Oauth 2.0 server. This package helps you to develop your own custom oauth2 server. With lots of scaffolding done for you you can easily implement your own logic without any hassle.
 <br>
